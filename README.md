@@ -1,3 +1,11 @@
+---
+title: Boardroom AI
+emoji: 🏛️
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+pinned: false
+---
 # 🏛️ Boardroom AI
 
 **The AI executive team every founder deserves.**
