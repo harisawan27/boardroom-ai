@@ -27,4 +27,5 @@ jobs:
             --repo-type space \
             --commit-message "Sync from GitHub Actions" \
             --delete "*" \
-            --exclude ".git/*" ".github/*"
+            --exclude ".git/*" \
+            --exclude ".github/*"
