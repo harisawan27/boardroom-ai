@@ -3,20 +3,26 @@ name: Sync to Hugging Face Hub
 on:
   push:
     branches: [main]
-  # to run this workflow manually from the Actions tab
   workflow_dispatch:
+
+# These permissions are required for OpenID Connect (OIDC) authentication
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          lfs: true
-      - name: Push to hub
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - uses: actions/checkout@v4
+
+      - name: Install Hugging Face CLI
+        run: pip install -U "huggingface_hub[cli]"
+
+      - name: Sync to Hugging Face Space
         run: |
-          git remote add space https://user:$HF_TOKEN@huggingface.co/spaces/https://harisawan07-boardroom-ai.hf.space
-          git push --force space main
+          huggingface-cli upload harisawan07/boardroom-ai . . \
+            --repo-type space \
+            --commit-message "Sync from GitHub Actions" \
+            --delete "*" \
+            --exclude ".git/*" ".github/*"
