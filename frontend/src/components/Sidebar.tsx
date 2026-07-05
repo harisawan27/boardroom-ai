@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { getSessions } from "../api/client";
+import { getSessions, deleteSession } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
+import ConfirmModal from "./ConfirmModal";
 
 interface SessionInfo {
   id: string;
@@ -24,6 +25,46 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
   const [loading, setLoading] = useState(true);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
+
+  // Modals state
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<SessionInfo | null>(null);
+
+  // PWA state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!sessionToDelete) return;
+    try {
+      await deleteSession(sessionToDelete.id);
+      setSessions(prev => prev.filter(s => s.id !== sessionToDelete.id));
+      if (selectedSessionId === sessionToDelete.id) {
+        onSelectSession(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete session", err);
+    } finally {
+      setSessionToDelete(null);
+    }
+  };
 
   const loadSessions = async () => {
     try {
@@ -106,28 +147,38 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         ) : (
           <div className="space-y-1">
             {sessions.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  onSelectSession(s);
-                  if (onClose) onClose();
-                }}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 ${
-                  selectedSessionId === s.id
-                    ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
-                }`}
-              >
-                <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 text-xs">
-                  🏛️
-                </div>
-                <div className="truncate flex-1">
-                  <div className="truncate font-medium">{s.title}</div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
-                    {new Date(s.updated_at).toLocaleDateString()}
+              <div key={s.id} className="group relative flex items-center">
+                <button
+                  onClick={() => {
+                    onSelectSession(s);
+                    if (onClose) onClose();
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 pr-10 ${
+                    selectedSessionId === s.id
+                      ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
+                  }`}
+                >
+                  <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 text-xs">
+                    🏛️
                   </div>
-                </div>
-              </button>
+                  <div className="truncate flex-1">
+                    <div className="truncate font-medium">{s.title}</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
+                      {new Date(s.updated_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => setSessionToDelete(s)}
+                  className="absolute right-2 p-1.5 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                  title="Delete Chat"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -135,6 +186,21 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
 
       {/* Footer / User Area */}
       <div className="p-4 border-t border-slate-200 dark:border-white/5 space-y-3">
+        {deferredPrompt && (
+          <>
+            <button
+              onClick={handleInstallClick}
+              className="w-full flex items-center gap-3 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors py-2 px-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-500/10 font-medium"
+            >
+              <svg className="w-5 h-5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Install App
+            </button>
+            <div className="h-px w-full bg-slate-200 dark:bg-white/5 my-2"></div>
+          </>
+        )}
+
         {onOpenTutorial && (
           <>
             <button
@@ -183,7 +249,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         </button>
 
         <button
-          onClick={logout}
+          onClick={() => setLogoutModalOpen(true)}
           className="w-full flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors py-2 px-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 mt-1"
         >
           <svg className="w-5 h-5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -192,6 +258,24 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
           Sign Out
         </button>
       </div>
+
+      <ConfirmModal 
+        isOpen={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+        onConfirm={logout}
+        title="Sign Out"
+        description="Are you sure you want to sign out of Boardroom AI?"
+        confirmText="Sign Out"
+      />
+
+      <ConfirmModal 
+        isOpen={!!sessionToDelete}
+        onClose={() => setSessionToDelete(null)}
+        onConfirm={handleDeleteSession}
+        title="Delete Chat"
+        description={`Are you sure you want to delete "${sessionToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+      />
     </div>
     </>
   );

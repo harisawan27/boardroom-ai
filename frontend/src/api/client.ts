@@ -177,6 +177,11 @@ export async function getSession(sessionId: string): Promise<any> {
   return response.data;
 }
 
+export async function deleteSession(sessionId: string): Promise<any> {
+  const response = await apiClient.delete(`/chat/sessions/${sessionId}`);
+  return response.data;
+}
+
 export async function sendStandardMessage(sessionId: string, message: string): Promise<any> {
   const response = await apiClient.post("/chat/message", { session_id: sessionId, message });
   return response.data;
