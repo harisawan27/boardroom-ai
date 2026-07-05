@@ -16,3 +16,4 @@ class Meeting(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="meetings")
+    chat_message = relationship("ChatMessage", back_populates="meeting", uselist=False, primaryjoin="Meeting.id==ChatMessage.meeting_id")

@@ -15,3 +15,4 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     meetings = relationship("Meeting", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")

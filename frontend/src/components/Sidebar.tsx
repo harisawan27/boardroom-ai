@@ -1,43 +1,42 @@
 import { useEffect, useState } from "react";
-import { fetchMeetings } from "../api/client";
+import { getSessions } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 
-interface MeetingInfo {
+interface SessionInfo {
   id: string;
-  template: string;
-  prompt: string;
-  report_data: any;
+  title: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface SidebarProps {
-  onSelectMeeting: (meeting: MeetingInfo | null) => void;
-  selectedMeetingId?: string;
+  onSelectSession: (session: SessionInfo | null) => void;
+  selectedSessionId?: string;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export default function Sidebar({ onSelectMeeting, selectedMeetingId, isOpen = false, onClose }: SidebarProps) {
-  const [meetings, setMeetings] = useState<MeetingInfo[]>([]);
+export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = false, onClose }: SidebarProps) {
+  const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
 
-  const loadMeetings = async () => {
+  const loadSessions = async () => {
     try {
-      const data = await fetchMeetings();
-      setMeetings(data);
+      const data = await getSessions();
+      setSessions(data);
     } catch (err) {
-      console.error("Failed to fetch meetings", err);
+      console.error("Failed to fetch sessions", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadMeetings();
+    loadSessions();
   }, []);
 
   return (
@@ -78,7 +77,7 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId, isOpen = f
       <div className="p-4">
         <button
           onClick={() => {
-            onSelectMeeting(null);
+            onSelectSession(null);
             if (onClose) onClose();
           }}
           className="w-full flex items-center justify-center gap-2 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-medium py-2.5 rounded-xl transition-all shadow-sm dark:shadow-none"
@@ -86,7 +85,7 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId, isOpen = f
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          New Meeting
+          New Chat
         </button>
       </div>
 
@@ -99,21 +98,21 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId, isOpen = f
           <div className="flex justify-center p-4">
             <div className="w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
           </div>
-        ) : meetings.length === 0 ? (
+        ) : sessions.length === 0 ? (
           <div className="text-center p-4 text-xs text-slate-500">
-            No past meetings found.
+            No past chats found.
           </div>
         ) : (
           <div className="space-y-1">
-            {meetings.map((m) => (
+            {sessions.map((s) => (
               <button
-                key={m.id}
+                key={s.id}
                 onClick={() => {
-                  onSelectMeeting(m);
+                  onSelectSession(s);
                   if (onClose) onClose();
                 }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 ${
-                  selectedMeetingId === m.id
+                  selectedSessionId === s.id
                     ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
                 }`}
@@ -122,9 +121,9 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId, isOpen = f
                   🏛️
                 </div>
                 <div className="truncate flex-1">
-                  <div className="truncate font-medium">{m.prompt}</div>
+                  <div className="truncate font-medium">{s.title}</div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
-                    {new Date(m.created_at).toLocaleDateString()} • {m.template.replace("_BOARD", "")}
+                    {new Date(s.updated_at).toLocaleDateString()}
                   </div>
                 </div>
               </button>

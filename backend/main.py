@@ -38,8 +38,12 @@ from agents import run_meeting
 from database import get_db
 from models.user import User
 from models.meeting import Meeting
+from models.chat import ChatSession, ChatMessage
 from security.auth import get_password_hash, verify_password, create_access_token, get_current_user
 import datetime
+from sqlalchemy.orm import selectinload
+from google import genai
+import google.genai.types as genai_types
 
 # ---------------------------------------------------------------------------
 # Load environment variables from .env (never hardcode API keys)
@@ -127,6 +131,11 @@ class ChatRequest(BaseModel):
     """Input schema for a streaming chat request."""
     template: str = Field(default="STARTUP_BOARD", description="Board template context")
     prompt: str = Field(..., description="The user's raw decision prompt")
+    session_id: Optional[str] = Field(None, description="The chat session ID")
+
+class StandardMessageRequest(BaseModel):
+    session_id: str
+    message: str
 
 class MeetingResponse(BaseModel):
     id: str
@@ -134,6 +143,21 @@ class MeetingResponse(BaseModel):
     prompt: str
     report_data: Optional[Dict[str, Any]]
     created_at: datetime.datetime
+
+class ChatMessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    is_agentic: bool
+    meeting: Optional[MeetingResponse] = None
+    created_at: datetime.datetime
+
+class ChatSessionResponse(BaseModel):
+    id: str
+    title: str
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    messages: Optional[List[ChatMessageResponse]] = None
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -205,6 +229,102 @@ async def get_meetings(current_user: User = Depends(get_current_user), db: Async
     )
     return result.scalars().all()
 
+# ---------------------------------------------------------------------------
+# Sessions & Standard Chat
+# ---------------------------------------------------------------------------
+@app.post("/chat/sessions", response_model=ChatSessionResponse, tags=["Chat"])
+async def create_session(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    session = ChatSession(user_id=current_user.id, title="New Brainstorming Session")
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+@app.get("/chat/sessions", response_model=List[ChatSessionResponse], tags=["Chat"])
+async def get_sessions(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ChatSession)
+        .filter(ChatSession.user_id == current_user.id)
+        .order_by(ChatSession.updated_at.desc())
+    )
+    return result.scalars().all()
+
+@app.get("/chat/sessions/{session_id}", response_model=ChatSessionResponse, tags=["Chat"])
+async def get_session(session_id: str, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ChatSession)
+        .options(selectinload(ChatSession.messages).selectinload(ChatMessage.meeting))
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+    )
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+@app.post("/chat/message", response_model=ChatMessageResponse, tags=["Chat"])
+async def send_standard_message(
+    body: StandardMessageRequest, 
+    current_user: User = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    # Verify session
+    result = await db.execute(select(ChatSession).filter(ChatSession.id == body.session_id, ChatSession.user_id == current_user.id))
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Save user message
+    user_msg = ChatMessage(session_id=session.id, role="user", content=body.message)
+    db.add(user_msg)
+    
+    # Update session
+    if session.title == "New Brainstorming Session":
+        session.title = body.message[:30] + "..." if len(body.message) > 30 else body.message
+    session.updated_at = datetime.datetime.utcnow()
+
+    # Call Gemini (Chief of Staff)
+    client = genai.Client()
+    # Pull history
+    hist_result = await db.execute(
+        select(ChatMessage)
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at.asc())
+    )
+    history = hist_result.scalars().all()
+    
+    contents = []
+    # System context
+    system_prompt = "You are the Chief of Staff for a CEO. You help them brainstorm and refine proposals before they present them to the Board of Directors. Be concise, professional, and helpful."
+    if current_user.profile_data:
+        system_prompt += f"\nUser Context: {json.dumps(current_user.profile_data)}"
+    
+    # Build history for Gemini
+    for m in history:
+        if m.role == "user" or m.role == "assistant":
+            # For Gemini, role is "user" or "model"
+            r = "model" if m.role == "assistant" else "user"
+            contents.append(genai_types.Content(role=r, parts=[genai_types.Part.from_text(text=m.content)]))
+
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=contents,
+        config=genai_types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=0.7
+        )
+    )
+    
+    ai_text = response.text or "I understand. Would you like me to convene the board on this?"
+    
+    # Save assistant message
+    asst_msg = ChatMessage(session_id=session.id, role="assistant", content=ai_text)
+    db.add(asst_msg)
+    await db.commit()
+    await db.refresh(asst_msg)
+    
+    return asst_msg
+
+
 
 @app.post("/chat/stream", tags=["Chat"])
 @limiter.limit(os.getenv("RATE_LIMIT", "5/minute"))
@@ -233,17 +353,54 @@ async def chat_stream(
         prompt=body.prompt
     )
     db.add(new_meeting)
+
+    # Optional: Link to chat session
+    user_msg = None
+    asst_msg = None
+    if body.session_id:
+        result = await db.execute(select(ChatSession).filter(ChatSession.id == body.session_id, ChatSession.user_id == current_user.id))
+        session = result.scalars().first()
+        if session:
+            session.updated_at = datetime.datetime.utcnow()
+            user_msg = ChatMessage(session_id=session.id, role="user", content=body.prompt)
+            db.add(user_msg)
+            # The assistant message holds the meeting UI
+            asst_msg = ChatMessage(
+                session_id=session.id, 
+                role="assistant", 
+                content=f"I have convened the {template_type.value} board.", 
+                is_agentic=True,
+                meeting_id=meeting_id
+            )
+            db.add(asst_msg)
+
     await db.commit()
 
     # Prepare Context Prompt
     # Inject user's profile data if available
     final_prompt = body.prompt
+    context_str = "User Context:\n"
     if current_user.profile_data:
-        profile_context = "User Context:\n"
         for k, v in current_user.profile_data.items():
             if v:
-                profile_context += f"- {k.capitalize()}: {v}\n"
-        final_prompt = f"{profile_context}\nTask:\n{body.prompt}"
+                context_str += f"- {k.capitalize()}: {v}\n"
+    
+    # If session is provided, add chat history as context
+    if body.session_id:
+        hist_result = await db.execute(
+            select(ChatMessage)
+            .filter(ChatMessage.session_id == body.session_id)
+            .order_by(ChatMessage.created_at.asc())
+        )
+        history = hist_result.scalars().all()
+        if history:
+            context_str += "\nPrevious Chat Context:\n"
+            for m in history:
+                if not m.is_agentic: # Ignore massive agent reports in the context
+                    role_str = "User" if m.role == "user" else "Chief of Staff"
+                    context_str += f"{role_str}: {m.content}\n"
+            
+    final_prompt = f"{context_str}\nTask:\n{body.prompt}"
 
     async def event_generator():
         try:

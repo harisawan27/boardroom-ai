@@ -44,6 +44,7 @@ export interface RoleInfo {
  * Submit a prompt and stream the board meeting responses.
  */
 export async function streamChat(
+  sessionId: string | null,
   template: string,
   prompt: string,
   onRoles: (roles: RoleInfo[]) => void,
@@ -63,7 +64,7 @@ export async function streamChat(
       {
         method: "POST",
         headers,
-        body: JSON.stringify({ template, prompt }),
+        body: JSON.stringify({ template, prompt, session_id: sessionId }),
       }
     );
 
@@ -154,5 +155,29 @@ export async function getMe(): Promise<any> {
 
 export async function updateProfile(profileData: any): Promise<any> {
   const response = await apiClient.put("/auth/profile", profileData);
+  return response.data;
+}
+
+// ---------------------------------------------------------------------------
+// Copilot Chat & Sessions API
+// ---------------------------------------------------------------------------
+
+export async function createSession(): Promise<any> {
+  const response = await apiClient.post("/chat/sessions");
+  return response.data;
+}
+
+export async function getSessions(): Promise<any[]> {
+  const response = await apiClient.get("/chat/sessions");
+  return response.data;
+}
+
+export async function getSession(sessionId: string): Promise<any> {
+  const response = await apiClient.get(`/chat/sessions/${sessionId}`);
+  return response.data;
+}
+
+export async function sendStandardMessage(sessionId: string, message: string): Promise<any> {
+  const response = await apiClient.post("/chat/message", { session_id: sessionId, message });
   return response.data;
 }
