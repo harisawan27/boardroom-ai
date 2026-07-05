@@ -135,7 +135,6 @@ export default function ReportBanner({
           </h1>
           <div
             className={`
-            className={`
               inline-flex items-center gap-2 px-5 py-2.5 rounded-full
               text-lg font-bold ${style.text} bg-white/50 dark:bg-white/5 border ${style.border} shadow-sm dark:shadow-none
             `}
