@@ -20,6 +20,8 @@ jobs:
         run: pip install -U "huggingface_hub[cli]"
 
       - name: Sync to Hugging Face Space
+        env:
+          HF_OIDC_RESOURCE: spaces/harisawan07/boardroom-ai
         run: |
           huggingface-cli upload harisawan07/boardroom-ai . . \
             --repo-type space \
