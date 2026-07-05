@@ -23,7 +23,7 @@ jobs:
         env:
           HF_OIDC_RESOURCE: spaces/harisawan07/boardroom-ai
         run: |
-          huggingface-cli upload harisawan07/boardroom-ai . . \
+          hf upload harisawan07/boardroom-ai . . \
             --repo-type space \
             --commit-message "Sync from GitHub Actions" \
             --delete "*" \
