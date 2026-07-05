@@ -16,28 +16,28 @@ interface ReportBannerProps {
 /** Decision color schemes */
 const decisionStyles = {
   APPROVE: {
-    bg: "from-emerald-500/20 to-emerald-900/20",
+    bg: "from-emerald-500/10 to-emerald-900/10 dark:from-emerald-500/20 dark:to-emerald-900/20",
     border: "border-emerald-500/30",
-    text: "text-emerald-400",
-    glow: "shadow-[0_0_60px_rgba(16,185,129,0.15)]",
+    text: "text-emerald-700 dark:text-emerald-400",
+    glow: "shadow-[0_0_60px_rgba(16,185,129,0.1)] dark:shadow-[0_0_60px_rgba(16,185,129,0.15)]",
     ring: "stroke-emerald-500",
     label: "APPROVED",
     icon: "✓",
   },
   REJECT: {
-    bg: "from-red-500/20 to-red-900/20",
+    bg: "from-red-500/10 to-red-900/10 dark:from-red-500/20 dark:to-red-900/20",
     border: "border-red-500/30",
-    text: "text-red-400",
-    glow: "shadow-[0_0_60px_rgba(239,68,68,0.15)]",
+    text: "text-red-700 dark:text-red-400",
+    glow: "shadow-[0_0_60px_rgba(239,68,68,0.1)] dark:shadow-[0_0_60px_rgba(239,68,68,0.15)]",
     ring: "stroke-red-500",
     label: "REJECTED",
     icon: "✗",
   },
   DEFER: {
-    bg: "from-amber-500/20 to-amber-900/20",
+    bg: "from-amber-500/10 to-amber-900/10 dark:from-amber-500/20 dark:to-amber-900/20",
     border: "border-amber-500/30",
-    text: "text-amber-400",
-    glow: "shadow-[0_0_60px_rgba(245,158,11,0.15)]",
+    text: "text-amber-700 dark:text-amber-400",
+    glow: "shadow-[0_0_60px_rgba(245,158,11,0.1)] dark:shadow-[0_0_60px_rgba(245,158,11,0.15)]",
     ring: "stroke-amber-500",
     label: "DEFERRED",
     icon: "⏸",
@@ -98,7 +98,7 @@ export default function ReportBanner({
               fill="none"
               stroke="currentColor"
               strokeWidth="8"
-              className="text-slate-800"
+              className="text-slate-200 dark:text-slate-800"
             />
             {/* Progress ring */}
             <circle
@@ -127,16 +127,17 @@ export default function ReportBanner({
 
         {/* Decision text */}
         <div className="text-center md:text-left flex-1">
-          <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">
+          <p className="text-xs text-slate-500 dark:text-slate-500 uppercase tracking-widest mb-1">
             {templateName} • Board Decision
           </p>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-3">
             {decisionTitle}
           </h1>
           <div
             className={`
+            className={`
               inline-flex items-center gap-2 px-5 py-2.5 rounded-full
-              text-lg font-bold ${style.text} bg-white/5 border ${style.border}
+              text-lg font-bold ${style.text} bg-white/50 dark:bg-white/5 border ${style.border} shadow-sm dark:shadow-none
             `}
           >
             <span className="text-xl">{style.icon}</span>

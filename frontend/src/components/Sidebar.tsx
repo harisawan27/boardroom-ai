@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { fetchMeetings } from "../api/client";
 import { useAuthStore } from "../store/authStore";
+import { useNavigate } from "react-router-dom";
+import ThemeToggle from "./ThemeToggle";
 
 interface MeetingInfo {
   id: string;
@@ -13,12 +15,15 @@ interface MeetingInfo {
 interface SidebarProps {
   onSelectMeeting: (meeting: MeetingInfo | null) => void;
   selectedMeetingId?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function Sidebar({ onSelectMeeting, selectedMeetingId }: SidebarProps) {
+export default function Sidebar({ onSelectMeeting, selectedMeetingId, isOpen = false, onClose }: SidebarProps) {
   const [meetings, setMeetings] = useState<MeetingInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
 
   const loadMeetings = async () => {
     try {
@@ -36,24 +41,47 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId }: SidebarP
   }, []);
 
   return (
-    <div className="w-64 h-screen border-r border-white/5 bg-[#06080f]/90 backdrop-blur-xl flex flex-col flex-shrink-0 z-20">
-      {/* Header */}
-      <div className="p-4 border-b border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-            B
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 dark:bg-[#06080f]/80 backdrop-blur-sm z-30 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Sidebar Container */}
+      <div className={`fixed md:static inset-y-0 left-0 w-64 h-screen border-r border-slate-200 dark:border-white/5 bg-slate-50/90 dark:bg-[#06080f]/90 backdrop-blur-xl flex flex-col flex-shrink-0 z-40 transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}>
+        {/* Header */}
+        <div className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+              B
+            </div>
+            <span className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
+              Boardroom<span className="gradient-text"> AI</span>
+            </span>
           </div>
-          <span className="text-sm font-semibold text-white tracking-tight">
-            Boardroom<span className="gradient-text"> AI</span>
-          </span>
+          {onClose && (
+            <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          )}
         </div>
-      </div>
 
       {/* New Meeting Button */}
       <div className="p-4">
         <button
-          onClick={() => onSelectMeeting(null)}
-          className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium py-2.5 rounded-xl transition-all"
+          onClick={() => {
+            onSelectMeeting(null);
+            if (onClose) onClose();
+          }}
+          className="w-full flex items-center justify-center gap-2 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-medium py-2.5 rounded-xl transition-all shadow-sm dark:shadow-none"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -64,7 +92,7 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId }: SidebarP
 
       {/* History List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-        <div className="px-3 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+        <div className="px-3 pb-2 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-widest">
           History
         </div>
         {loading ? (
@@ -80,19 +108,22 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId }: SidebarP
             {meetings.map((m) => (
               <button
                 key={m.id}
-                onClick={() => onSelectMeeting(m)}
+                onClick={() => {
+                  onSelectMeeting(m);
+                  if (onClose) onClose();
+                }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 ${
                   selectedMeetingId === m.id
-                    ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
-                    : "text-slate-400 hover:bg-white/5 hover:text-white border border-transparent"
+                    ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
                 }`}
               >
-                <div className="w-5 h-5 rounded bg-slate-800 flex items-center justify-center flex-shrink-0 text-xs">
+                <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 text-xs">
                   🏛️
                 </div>
                 <div className="truncate flex-1">
                   <div className="truncate font-medium">{m.prompt}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-500 mt-0.5">
                     {new Date(m.created_at).toLocaleDateString()} • {m.template.replace("_BOARD", "")}
                   </div>
                 </div>
@@ -103,16 +134,28 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId }: SidebarP
       </div>
 
       {/* Footer / User Area */}
-      <div className="p-4 border-t border-white/5 space-y-2">
-        <div className="px-3 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-widest">
+      <div className="p-4 border-t border-slate-200 dark:border-white/5 space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
+            Theme
+          </div>
+          <ThemeToggle />
+        </div>
+        
+        <div className="h-px w-full bg-slate-200 dark:bg-white/5 my-2"></div>
+
+        <div className="px-3 pb-1 text-xs font-semibold text-slate-500 uppercase tracking-widest">
           Account
         </div>
         
         <button
-          onClick={() => window.location.href = "/settings"}
-          className="w-full flex items-center gap-3 text-sm text-slate-300 hover:text-white transition-colors py-2 px-3 rounded-xl hover:bg-white/5"
+          onClick={() => {
+            navigate("/settings");
+            if (onClose) onClose();
+          }}
+          className="w-full flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors py-2 px-3 rounded-xl hover:bg-slate-200/50 dark:hover:bg-white/5"
         >
-          <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">
+          <div className="w-6 h-6 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
             {useAuthStore.getState().user?.profile_data?.name?.charAt(0) || "U"}
           </div>
           <div className="truncate text-left flex-1">
@@ -122,7 +165,7 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId }: SidebarP
 
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 text-sm text-slate-400 hover:text-red-400 transition-colors py-2 px-3 rounded-xl hover:bg-red-500/10 mt-2"
+          className="w-full flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors py-2 px-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 mt-1"
         >
           <svg className="w-5 h-5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -131,5 +174,6 @@ export default function Sidebar({ onSelectMeeting, selectedMeetingId }: SidebarP
         </button>
       </div>
     </div>
+    </>
   );
 }

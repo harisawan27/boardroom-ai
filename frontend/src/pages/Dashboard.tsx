@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [selectedTemplate, setSelectedTemplate] = useState("STARTUP_BOARD");
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeMeetingId, setActiveMeetingId] = useState<string | undefined>();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const endOfChatRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom of chat
@@ -176,27 +177,46 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-[#06080f]">
+    <div className="min-h-screen flex relative overflow-hidden bg-slate-50 dark:bg-[#06080f] transition-colors">
       {/* Global Background */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-[radial-gradient(ellipse,rgba(99,102,241,0.05)_0%,transparent_70%)]" />
-        <div className="absolute inset-0 dot-pattern opacity-30" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-[radial-gradient(ellipse,rgba(99,102,241,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(ellipse,rgba(99,102,241,0.05)_0%,transparent_70%)]" />
+        <div className="absolute inset-0 dot-pattern opacity-60 dark:opacity-30" />
       </div>
 
       {/* Sidebar */}
-      <Sidebar onSelectMeeting={handleSelectMeeting} selectedMeetingId={activeMeetingId} />
+      <Sidebar 
+        onSelectMeeting={handleSelectMeeting} 
+        selectedMeetingId={activeMeetingId} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col relative z-10 h-screen">
+      <div className="flex-1 flex flex-col relative z-10 h-screen w-full md:w-auto">
         {/* Navbar */}
-        <nav className="p-4 border-b border-white/5 flex items-center justify-end glass">
+        <nav className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between md:justify-end glass">
+          <div className="flex items-center gap-3 md:hidden">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <span className="font-bold text-slate-900 dark:text-white">Boardroom AI</span>
+          </div>
+
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500 uppercase tracking-widest hidden sm:inline-block">Board Context</span>
             <select
               value={selectedTemplate}
               onChange={(e) => setSelectedTemplate(e.target.value)}
               disabled={!!activeMeetingId || isProcessing}
-              className="text-xs bg-slate-900 border-slate-800 rounded-lg py-1.5 focus:ring-0 focus:border-indigo-500 max-w-[150px] disabled:opacity-50"
+              className="text-xs bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-lg py-1.5 focus:ring-0 focus:border-indigo-500 max-w-[150px] disabled:opacity-50 text-slate-900 dark:text-white shadow-sm dark:shadow-none"
             >
               {Object.keys(TEMPLATES).map((key) => (
                 <option key={key} value={key}>
@@ -212,12 +232,12 @@ export default function Dashboard() {
           <div className="max-w-4xl mx-auto space-y-8 pb-32">
             
             {messages.length === 0 && (
-              <div className="text-center mt-20 animate-fade-in">
+              <div className="text-center mt-20 animate-fade-in px-4">
                 <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-600/20 border border-indigo-500/30 items-center justify-center text-3xl mb-6 shadow-xl shadow-indigo-500/10">
                   🏛️
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Welcome to the Boardroom</h2>
-                <p className="text-slate-400 mb-8 max-w-md mx-auto">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome to the Boardroom</h2>
+                <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto text-sm sm:text-base">
                   Describe your decision, problem, or plan. The executive board will analyze it from 6 different perspectives and vote.
                 </p>
                 
@@ -226,7 +246,7 @@ export default function Dashboard() {
                     <button 
                       key={i} 
                       onClick={() => setInput(q)}
-                      className="px-4 py-2 rounded-full border border-white/10 text-xs text-slate-400 hover:text-white hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all"
+                      className="px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all shadow-sm dark:shadow-none bg-white dark:bg-transparent"
                     >
                       "{q}"
                     </button>
@@ -240,8 +260,8 @@ export default function Dashboard() {
                 
                 {/* User Message */}
                 {msg.role === "user" && (
-                  <div className="max-w-[85%] sm:max-w-[70%]">
-                    <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-5 py-3.5 shadow-lg text-sm leading-relaxed whitespace-pre-wrap">
+                  <div className="max-w-[90%] sm:max-w-[75%]">
+                    <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-lg text-sm leading-relaxed whitespace-pre-wrap">
                       {msg.text}
                     </div>
                   </div>
@@ -288,23 +308,23 @@ export default function Dashboard() {
 
                         {/* If viewing history without rolesInfo streams, we mock VoteCards using standard board structure, or omit them.
                             For simplicity, we'll just display the report data. */}
-                        <div className="mt-6 glass-elevated rounded-2xl p-6">
-                          <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-widest mb-4">Board Consensus</h3>
-                          <p className="text-sm text-slate-300 leading-relaxed border-l-2 border-indigo-500/30 pl-4">
+                        <div className="mt-6 glass-elevated rounded-2xl p-4 sm:p-6">
+                          <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-600 uppercase tracking-widest mb-4">Board Consensus</h3>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed border-l-2 border-indigo-500/30 pl-4">
                             {msg.report.debate_summary}
                           </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                          <div className="glass-elevated rounded-2xl p-5">
-                            <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-widest mb-4">Key Risks</h3>
-                            <ul className="space-y-2 text-sm text-slate-400">
+                          <div className="glass-elevated rounded-2xl p-4 sm:p-5">
+                            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-600 uppercase tracking-widest mb-4">Key Risks</h3>
+                            <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-400">
                               {msg.report.key_risks?.map((risk: string, i: number) => <li key={i}>• {risk}</li>)}
                             </ul>
                           </div>
-                          <div className="glass-elevated rounded-2xl p-5">
-                            <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-widest mb-4">Recommended Actions</h3>
-                            <ul className="space-y-2 text-sm text-slate-400">
+                          <div className="glass-elevated rounded-2xl p-4 sm:p-5">
+                            <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-600 uppercase tracking-widest mb-4">Recommended Actions</h3>
+                            <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-400">
                               {msg.report.recommended_actions?.map((act: string, i: number) => <li key={i}>• {act}</li>)}
                             </ul>
                           </div>
@@ -314,8 +334,8 @@ export default function Dashboard() {
 
                     {/* Loading indicator */}
                     {isProcessing && (!msg.streams || Object.keys(msg.streams).length === 0) && (
-                      <div className="flex items-center gap-3 text-slate-400 text-sm">
-                        <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center animate-pulse">
+                      <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+                        <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center animate-pulse">
                           🏛️
                         </div>
                         Calling the board to order...
@@ -331,9 +351,9 @@ export default function Dashboard() {
 
         {/* Input Area (disabled if viewing past meeting) */}
         {!activeMeetingId && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-[#06080f] via-[#06080f]/90 to-transparent z-20">
+          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-50 via-slate-50/90 dark:from-[#06080f] dark:via-[#06080f]/90 to-transparent z-20">
             <div className="max-w-3xl mx-auto relative">
-              <form onSubmit={handleSubmit} className="relative flex items-end">
+              <form onSubmit={handleSubmit} className="relative flex items-end shadow-lg dark:shadow-none rounded-2xl">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -344,7 +364,7 @@ export default function Dashboard() {
                     }
                   }}
                   placeholder="Ask the board..."
-                  className="w-full bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-2xl py-4 pl-5 pr-14 text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent resize-none max-h-48 custom-scrollbar"
+                  className="w-full bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl py-3.5 sm:py-4 pl-4 sm:pl-5 pr-14 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent resize-none max-h-48 custom-scrollbar text-sm sm:text-base"
                   rows={Math.min(input.split("\n").length, 5) || 1}
                   style={{ minHeight: '56px' }}
                 />
@@ -365,8 +385,8 @@ export default function Dashboard() {
                   )}
                 </button>
               </form>
-              <div className="text-center mt-3">
-                <span className="text-[10px] text-slate-600 font-medium">Shift + Enter for new line • Powered by Google Gemma & Gemini</span>
+              <div className="text-center mt-3 hidden sm:block">
+                <span className="text-[10px] text-slate-500 dark:text-slate-600 font-medium">Shift + Enter for new line • Powered by Google Gemma & Gemini</span>
               </div>
             </div>
           </div>

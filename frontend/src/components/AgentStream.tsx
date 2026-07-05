@@ -38,19 +38,19 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
   if (status === "idle") return null;
 
   return (
-    <div className="glass-elevated rounded-xl border border-white/5 animate-slide-up mb-4 overflow-hidden">
+    <div className="glass-elevated rounded-xl border border-slate-200 dark:border-white/5 animate-slide-up mb-4 overflow-hidden">
       {/* Header (Click to toggle) */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-md bg-gradient-to-br ${role.color} flex items-center justify-center text-sm`}>
             {role.icon}
           </div>
           <div className="text-left">
-            <span className="text-sm font-semibold text-white block">{role.key}</span>
-            <span className="text-[10px] text-slate-500">{role.title}</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-white block">{role.key}</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-500">{role.title}</span>
           </div>
         </div>
 
@@ -73,7 +73,7 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
           )}
 
           <svg
-            className={`w-4 h-4 text-slate-500 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-slate-500 dark:text-slate-500 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -85,7 +85,7 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
       <div
         className={`transition-all duration-300 ease-in-out ${isExpanded ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"}`}
       >
-        <div className="p-4 pt-0 border-t border-white/5">
+        <div className="p-4 pt-0 border-t border-slate-200 dark:border-white/5">
           {/* Thinking Dropdown */}
           {thinking && (
             <div className="mt-3 mb-2">
@@ -109,7 +109,7 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
               <div
                 className={`overflow-hidden transition-all duration-300 ${isThinkingOpen ? "max-h-[200px] opacity-100 mt-2" : "max-h-0 opacity-0"}`}
               >
-                <div className="text-[11px] text-slate-500 italic whitespace-pre-wrap leading-relaxed bg-white/[0.02] rounded-lg p-3 max-h-[180px] overflow-y-auto custom-scrollbar border border-white/[0.03]">
+                <div className="text-[11px] text-slate-500 dark:text-slate-500 italic whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-white/[0.02] rounded-lg p-3 max-h-[180px] overflow-y-auto custom-scrollbar border border-slate-200 dark:border-white/[0.03]">
                   {thinking}
                 </div>
               </div>
@@ -119,7 +119,7 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
           {/* Main Analysis Text */}
           <div
             ref={scrollRef}
-            className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2"
+            className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90 dark:opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2"
           >
             {text || (thinking ? "" : "Initializing analysis...")}
           </div>
