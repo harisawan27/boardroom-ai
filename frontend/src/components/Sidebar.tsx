@@ -16,9 +16,10 @@ interface SidebarProps {
   selectedSessionId?: string;
   isOpen?: boolean;
   onClose?: () => void;
+  onOpenTutorial?: () => void;
 }
 
-export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = false, onClose }: SidebarProps) {
+export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = false, onClose, onOpenTutorial }: SidebarProps) {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const logout = useAuthStore((state) => state.logout);
@@ -134,6 +135,25 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
 
       {/* Footer / User Area */}
       <div className="p-4 border-t border-slate-200 dark:border-white/5 space-y-3">
+        {onOpenTutorial && (
+          <>
+            <button
+              onClick={() => {
+                onOpenTutorial();
+                if (onClose) onClose();
+              }}
+              className="w-full flex items-center gap-3 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors py-2 px-3 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10 font-medium"
+            >
+              <svg className="w-5 h-5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              How it Works
+            </button>
+            <div className="h-px w-full bg-slate-200 dark:bg-white/5 my-2"></div>
+          </>
+        )}
+
         <div className="flex items-center justify-between px-1">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
             Theme

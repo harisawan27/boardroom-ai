@@ -3,6 +3,7 @@ import { streamChat, getSession, createSession, sendStandardMessage, type RoleIn
 import MeetingCanvas from "../components/MeetingCanvas";
 import AuthModal from "../components/AuthModal";
 import Sidebar from "../components/Sidebar";
+import TutorialModal from "../components/TutorialModal";
 import { useAuthStore } from "../store/authStore";
 import { TEMPLATES } from "../types/meeting";
 
@@ -33,6 +34,14 @@ export default function Dashboard() {
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
+  // Tutorial State
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [hasSeenTutorial, setHasSeenTutorial] = useState(() => localStorage.getItem("hasSeenTutorial") === "true");
+
+  // Chat Input State
+  const [isConveneBoardSelected, setIsConveneBoardSelected] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   // Canvas State
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [activeMeetingData, setActiveMeetingData] = useState<ActiveMeetingData | null>(null);
@@ -42,6 +51,21 @@ export default function Dashboard() {
   useEffect(() => {
     endOfChatRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleCloseTutorial = () => {
+    setIsTutorialOpen(false);
+    setHasSeenTutorial(true);
+    localStorage.setItem("hasSeenTutorial", "true");
+  };
+
+  const handleSubmit = (e: React.FormEvent | React.KeyboardEvent) => {
+    e.preventDefault();
+    if (isConveneBoardSelected) {
+      handleConveneBoard();
+    } else {
+      handleStandardChat(e as React.FormEvent);
+    }
+  };
 
   const loadSession = async (sessionId: string) => {
     try {
@@ -181,6 +205,7 @@ export default function Dashboard() {
         // onComplete
         () => {
           setIsProcessing(false);
+          setIsConveneBoardSelected(false);
           // Reload session to get the saved messages with the meeting attached
           loadSession(sessionId as string);
         }
@@ -215,6 +240,7 @@ export default function Dashboard() {
         selectedSessionId={activeSessionId} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onOpenTutorial={() => setIsTutorialOpen(true)}
       />
 
       <div className="flex-1 flex flex-col relative z-10 h-screen w-full md:w-auto">
@@ -236,6 +262,22 @@ export default function Dashboard() {
                 <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto text-sm sm:text-base">
                   Brainstorm with your Chief of Staff, and when you're ready, convene the full executive board to analyze your decision.
                 </p>
+
+                {!hasSeenTutorial && (
+                  <button 
+                    onClick={() => setIsTutorialOpen(true)}
+                    className="mb-8 mx-auto flex items-center gap-3 px-6 py-3 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-500/20 transition-all group font-medium"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+                      <svg className="w-4 h-4 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    Watch the 1-Minute Tutorial
+                  </button>
+                )}
+
                 <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
                   {["Should we raise a Series A now?", "Fire underperforming contractor?", "Pivot target audience to Enterprise?"].map((q, i) => (
                     <button key={i} onClick={() => setInput(q)} className="px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all shadow-sm dark:shadow-none bg-white dark:bg-transparent">
@@ -282,9 +324,9 @@ export default function Dashboard() {
         </main>
 
         {/* Input Command Center */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-50 via-slate-50/90 dark:from-[#06080f] dark:via-[#06080f]/90 to-transparent z-20">
-          <div className="max-w-3xl mx-auto relative">
-            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-lg dark:shadow-none overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-transparent transition-all">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-50 via-slate-50/90 dark:from-[#06080f] dark:via-[#06080f]/90 to-transparent z-20 pointer-events-none">
+          <div className="max-w-3xl mx-auto relative pointer-events-auto">
+            <div className={`bg-white dark:bg-slate-900/90 backdrop-blur-md border rounded-2xl shadow-lg dark:shadow-none overflow-visible transition-all ${isConveneBoardSelected ? 'border-indigo-500/50 shadow-indigo-500/10 ring-1 ring-indigo-500/20' : 'border-slate-200 dark:border-white/10 focus-within:ring-2 focus-within:ring-indigo-500/50'}`}>
               
               <textarea
                 value={input}
@@ -292,47 +334,81 @@ export default function Dashboard() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    handleStandardChat(e);
+                    handleSubmit(e);
                   }
                 }}
                 placeholder="Message Chief of Staff or convene the board..."
-                className="w-full bg-transparent border-none py-3.5 sm:py-4 px-4 sm:px-5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 resize-none max-h-48 custom-scrollbar text-sm sm:text-base"
+                className="w-full bg-transparent border-none py-3.5 sm:py-4 px-4 sm:px-5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 resize-none max-h-48 custom-scrollbar text-sm sm:text-base outline-none"
                 rows={Math.min(input.split("\n").length, 5) || 1}
                 style={{ minHeight: '56px' }}
               />
 
-              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-white/5">
-                <select
-                  value={selectedTemplate}
-                  onChange={(e) => setSelectedTemplate(e.target.value)}
-                  disabled={isProcessing}
-                  className="text-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pl-2 pr-8 focus:ring-0 focus:border-indigo-500 max-w-[140px] sm:max-w-[200px] disabled:opacity-50 text-slate-700 dark:text-slate-300 shadow-sm dark:shadow-none appearance-none"
-                  title={TEMPLATES[selectedTemplate as keyof typeof TEMPLATES]?.description}
-                >
-                  {Object.keys(TEMPLATES).map((key) => (
-                    <option key={key} value={key}>
-                      {TEMPLATES[key as keyof typeof TEMPLATES].name}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between px-2 pb-2">
+                <div className="flex items-center gap-2 relative">
+                  {/* Custom Dropdown for Template */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="flex items-center gap-2 text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      {TEMPLATES[selectedTemplate as keyof typeof TEMPLATES].name}
+                      <svg className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {isDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                        <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-20 overflow-hidden animate-fade-in">
+                          {Object.keys(TEMPLATES).map((key) => (
+                            <button
+                              key={key}
+                              onClick={() => {
+                                setSelectedTemplate(key);
+                                setIsDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-3 text-sm transition-colors ${selectedTemplate === key ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                            >
+                              <div className="font-medium">{TEMPLATES[key as keyof typeof TEMPLATES].name}</div>
+                              <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{TEMPLATES[key as keyof typeof TEMPLATES].description}</div>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Convene Toggle */}
                   <button
-                    onClick={handleStandardChat}
-                    disabled={!input.trim() || isProcessing}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setIsConveneBoardSelected(!isConveneBoardSelected)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isConveneBoardSelected ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 ring-1 ring-indigo-500/50' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                   >
-                    Discuss
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    </svg>
+                    Convene
                   </button>
+                </div>
+
+                <div className="flex items-center gap-2 pr-1">
                   <button
-                    onClick={handleConveneBoard}
+                    onClick={handleSubmit}
                     disabled={!input.trim() || isProcessing}
-                    className="px-4 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-md shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                      !input.trim() || isProcessing
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                        : isConveneBoardSelected
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:scale-105 shadow-indigo-500/20'
+                        : 'bg-indigo-500 text-white hover:scale-105 hover:bg-indigo-600'
+                    }`}
                   >
                     {isProcessing && isCanvasOpen ? (
                       <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                     ) : (
-                      "🏛️ Convene Board"
+                      <svg className="w-4 h-4 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
                     )}
                   </button>
                 </div>
@@ -353,6 +429,7 @@ export default function Dashboard() {
             decisionTitle={activeMeetingData.decisionTitle}
           />
         )}
+        <TutorialModal isOpen={isTutorialOpen} onClose={handleCloseTutorial} />
       </div>
     </div>
   );
