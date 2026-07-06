@@ -16,26 +16,8 @@ interface MeetingCanvasProps {
   isProcessing?: boolean;
   template: string;
   decisionTitle?: string;
+  rolesInfo?: any[];
 }
-
-const ROLES_INFO: Record<string, any> = {
-  STARTUP_BOARD: [
-    { key: "CEO", title: "Chief Executive Officer", icon: "🚀", color: "from-blue-500 to-cyan-500" },
-    { key: "CFO", title: "Chief Financial Officer", icon: "💰", color: "from-emerald-500 to-teal-500" },
-    { key: "CTO", title: "Chief Technology Officer", icon: "💻", color: "from-blue-500 to-blue-700" },
-    { key: "CMO", title: "Chief Marketing Officer", icon: "📢", color: "from-pink-500 to-rose-500" },
-    { key: "Legal", title: "General Counsel", icon: "⚖️", color: "from-slate-500 to-gray-500" },
-    { key: "Moderator", title: "Board Chair", icon: "🏛️", color: "from-amber-500 to-orange-500" },
-  ],
-  CORPORATE_BOARD: [
-    { key: "CEO", title: "Chief Executive Officer", icon: "👔", color: "from-blue-500 to-cyan-500" },
-    { key: "CFO", title: "Chief Financial Officer", icon: "📊", color: "from-emerald-500 to-teal-500" },
-    { key: "COO", title: "Chief Operating Officer", icon: "⚙️", color: "from-blue-500 to-blue-700" },
-    { key: "CRO", title: "Chief Risk Officer", icon: "🛡️", color: "from-pink-500 to-rose-500" },
-    { key: "Legal", title: "General Counsel", icon: "⚖️", color: "from-slate-500 to-gray-500" },
-    { key: "Moderator", title: "Board Chair", icon: "🏛️", color: "from-amber-500 to-orange-500" },
-  ]
-};
 
 export default function MeetingCanvas({
   isOpen,
@@ -45,11 +27,12 @@ export default function MeetingCanvas({
   isProcessing,
   template,
   decisionTitle = "Board Meeting",
+  rolesInfo,
 }: MeetingCanvasProps) {
   
   if (!isOpen) return null;
 
-  const roles = ROLES_INFO[template] || ROLES_INFO["STARTUP_BOARD"];
+  const roles = rolesInfo?.filter((r: any) => r.key !== "Moderator") || [];
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -88,7 +71,9 @@ export default function MeetingCanvas({
           
           {/* Report Banner */}
           {report && (
-            <div className="mb-8">
+            <div className="mb-8 animate-slide-down relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-[24px] blur-md opacity-20 dark:opacity-30 group-hover:opacity-40 transition-opacity duration-500"></div>
+              <div className="relative bg-slate-50 dark:bg-[#06080f] rounded-2xl">
               <ReportBanner
                 decision={report.final_decision as any}
                 confidence={report.confidence_score}
@@ -117,6 +102,7 @@ export default function MeetingCanvas({
                   </ul>
                 </div>
               </div>
+              </div>
             </div>
           )}
 
@@ -132,8 +118,9 @@ export default function MeetingCanvas({
 
           {/* Agent Streams */}
           {streams && Object.keys(streams).length > 0 && (
-            <div className="space-y-4 pb-20">
+            <div className="pb-20">
               <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-600 uppercase tracking-widest mb-4 border-b border-slate-200 dark:border-white/5 pb-2">Live Board Deliberation</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               {roles.map((role: any) => {
                 const stream = streams[role.key];
                 if (!stream || stream.status === "idle") return null;
@@ -147,6 +134,7 @@ export default function MeetingCanvas({
                   />
                 );
               })}
+              </div>
             </div>
           )}
         </div>

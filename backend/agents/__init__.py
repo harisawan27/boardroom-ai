@@ -98,18 +98,15 @@ async def run_meeting(
 ):
     """
     Run a full board meeting as an async generator yielding JSON strings for SSE.
-    
-    Yields event types:
-      - {"type": "roles", "data": [...]}     — board role info for frontend
-      - {"type": "thinking", "agent": "...", "text": "..."}  — thinking content
-      - {"type": "chunk", "agent": "...", "text": "..."}     — analysis content
-      - {"type": "report", "data": {...}}    — final structured report
-      - {"type": "error", "message": "..."}  — error message
     """
+    import asyncio
+    from google import genai
+    import google.genai.types as genai_types
+    client = genai.Client()
+    
     template_key = template_type.value
     prompt = fields.get("prompt", "")
 
-    # Get the board config to send role info to frontend
     config = get_board_config(template_key)
     roles_info = [
         {
@@ -121,7 +118,6 @@ async def run_meeting(
         }
         for role in config["roles"]
     ]
-    # Add moderator
     mod = config["moderator"]
     roles_info.append({
         "key": mod["key"],
@@ -131,10 +127,8 @@ async def run_meeting(
         "color": mod["color"],
     })
 
-    # Send role definitions to frontend first
     yield json.dumps({"type": "roles", "data": roles_info})
 
-    # Build the user message
     user_message = f"""## Board Meeting Analysis Request
 
 **Template**: {config['name']}
@@ -148,79 +142,121 @@ async def run_meeting(
 Analyze this thoroughly from your specific expertise. Show your thinking process, then provide a clear analysis with a VOTE and CONFIDENCE score.
 """
 
-    # Build the board pipeline dynamically from template
-    pipeline = build_board(template_key)
+    queue = asyncio.Queue()
 
-    # Set up runner
-    runner = InMemoryRunner(agent=pipeline)
-    runner.auto_create_session = True
+    async def stream_agent(agent_config, user_msg, q):
+        try:
+            contents = [genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_msg)])]
+            response_stream = await client.aio.models.generate_content_stream(
+                model=agent_config["model"],
+                contents=contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=agent_config["prompt"],
+                    temperature=agent_config.get("temperature", 0.7),
+                    max_output_tokens=agent_config.get("tokens", 2048)
+                )
+            )
+            
+            parser = AgentStreamParser()
+            full_text = ""
+            
+            async for chunk in response_stream:
+                if chunk.text:
+                    full_text += chunk.text
+                    for is_thinking, content in parser.process_chunk(chunk.text):
+                        await q.put({
+                            "type": "thinking" if is_thinking else "chunk",
+                            "agent": agent_config["key"],
+                            "text": content
+                        })
+                        
+            if parser.buffer:
+                await q.put({
+                    "type": "thinking" if parser.is_thinking else "chunk",
+                    "agent": agent_config["key"],
+                    "text": parser.buffer
+                })
+                
+            await q.put({"type": "done", "agent": agent_config["key"], "full_text": full_text})
+            
+        except Exception as e:
+            logger.error(f"Error in {agent_config['key']}: {e}")
+            await q.put({"type": "done", "agent": agent_config["key"], "full_text": f"Error: {e}"})
 
     logger.info(f"Running {config['name']} for meeting {meeting_id}...")
 
-    final_text = ""
-    parsers = {}
+    tasks = []
+    for role in config["roles"]:
+        tasks.append(asyncio.create_task(stream_agent(role, user_message, queue)))
+        
+    completed_specialists = 0
+    specialist_texts = {}
+    
+    while completed_specialists < len(config["roles"]):
+        event = await queue.get()
+        if event["type"] == "done":
+            completed_specialists += 1
+            specialist_texts[event["agent"]] = event["full_text"]
+        else:
+            yield json.dumps({
+                "type": event["type"],
+                "agent": event["agent"],
+                "text": event["text"]
+            })
+            
+    # Now run Moderator
+    moderator_config = config["moderator"]
+    moderator_prompt = "Specialist Analyses:\n\n"
+    for role in config["roles"]:
+        moderator_prompt += f"--- {role['title']} ({role['key']}) ---\n{specialist_texts.get(role['key'], 'No analysis')}\n\n"
+        
+    moderator_prompt += "\n" + user_message
+    
+    mod_parser = AgentStreamParser()
+    mod_full_text = ""
+    
     try:
-        async for event in runner.run_async(
-            user_id=f"meeting_{meeting_id}",
-            session_id=meeting_id,
-            new_message=types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=user_message)],
-            ),
-        ):
-            author = getattr(event, "author", None)
-            if not author:
-                continue
-
-            if hasattr(event, "content") and event.content and event.content.parts:
-                for part in event.content.parts:
-                    if hasattr(part, "text") and part.text:
-                        raw_text = part.text
-
-                        # Map agent name → role key for frontend
-                        agent_key = _agent_name_to_key(author, config)
-
-                        # Parse thinking vs regular content
-                        if author not in parsers:
-                            parsers[author] = AgentStreamParser()
-                            
-                        segments = parsers[author].process_chunk(raw_text)
-
-                        for is_thinking, content in segments:
-                            if is_thinking:
-                                yield json.dumps({
-                                    "type": "thinking",
-                                    "agent": agent_key,
-                                    "text": content,
-                                })
-                            else:
-                                yield json.dumps({
-                                    "type": "chunk",
-                                    "agent": agent_key,
-                                    "text": content,
-                                })
-
-                        # Track moderator output for report parsing
-                        if author == config["moderator"]["name"]:
-                            final_text += raw_text
-
-        logger.info(f"Pipeline completed for meeting {meeting_id}")
-
-        # Parse the Moderator's output into structured report
-        report = _parse_moderator_output(
-            final_text, meeting_id, template_type,
-            fields.get("decision_title", "Chat Session"),
-            config
+        mod_stream = await client.aio.models.generate_content_stream(
+            model=moderator_config["model"],
+            contents=[genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=moderator_prompt)])],
+            config=genai_types.GenerateContentConfig(
+                system_instruction=moderator_config["prompt"],
+                temperature=moderator_config.get("temperature", 0.3),
+                max_output_tokens=moderator_config.get("tokens", 2048)
+            )
         )
-
-        yield json.dumps({"type": "report", "data": report})
-
+        
+        async for chunk in mod_stream:
+            if chunk.text:
+                mod_full_text += chunk.text
+                for is_thinking, content in mod_parser.process_chunk(chunk.text):
+                    yield json.dumps({
+                        "type": "thinking" if is_thinking else "chunk",
+                        "agent": moderator_config["key"],
+                        "text": content,
+                    })
+                    
+        if mod_parser.buffer:
+            yield json.dumps({
+                "type": "thinking" if mod_parser.is_thinking else "chunk",
+                "agent": moderator_config["key"],
+                "text": mod_parser.buffer
+            })
+            
     except Exception as e:
-        logger.error(f"Error during board meeting: {e}")
-        yield json.dumps({
-            "type": "error",
-            "message": f"Board meeting error: {str(e)}"
-        })
+        logger.error(f"Error in Moderator: {e}")
+        mod_full_text = "{}"
+
+    logger.info(f"Pipeline completed for meeting {meeting_id}")
+
+    # Parse report
+    report = _parse_moderator_output(
+        mod_full_text, meeting_id, template_type,
+        fields.get("decision_title", "Chat Session"),
+        config
+    )
+
+    yield json.dumps({"type": "report", "data": report})
 
 
 def _agent_name_to_key(agent_name: str, config: dict) -> str:

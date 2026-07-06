@@ -37,8 +37,14 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
 
   if (status === "idle") return null;
 
+  const isThinking = status === "thinking";
+
   return (
-    <div className="glass-elevated rounded-xl border border-slate-200 dark:border-white/5 animate-slide-up mb-4 overflow-hidden">
+    <div className={`glass-elevated rounded-xl border animate-slide-up overflow-hidden transition-all duration-300 ${
+      isThinking 
+        ? "border-blue-500/30 ring-1 ring-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)] dark:shadow-[0_0_20px_rgba(59,130,246,0.15)]" 
+        : "border-slate-200 dark:border-white/5"
+    }`}>
       {/* Header (Click to toggle) */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -122,6 +128,9 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
             className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90 dark:opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2"
           >
             {text || (thinking ? "" : "Initializing analysis...")}
+            {isThinking && (
+              <span className="inline-block animate-pulse font-bold text-blue-500 ml-0.5 relative -top-[1px]">|</span>
+            )}
           </div>
         </div>
       </div>

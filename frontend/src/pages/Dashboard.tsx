@@ -227,7 +227,7 @@ export default function Dashboard() {
             const initialStreams: any = {};
             roles.forEach(r => {
               if (r.key !== "Moderator") {
-                initialStreams[r.key] = { text: "", thinking: "", status: "idle" };
+                initialStreams[r.key] = { text: "", thinking: "", status: "thinking" };
               }
             });
             return { ...prev, rolesInfo: roles, streams: initialStreams };
@@ -324,7 +324,9 @@ export default function Dashboard() {
               </button>
             )}
             <div className="flex items-center gap-2.5">
-              <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-6 h-6 object-contain" />
+              <div className="w-7 h-7 rounded-md bg-white shadow-sm ring-1 ring-slate-900/5 flex items-center justify-center p-1">
+                <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-full h-full object-contain" />
+              </div>
               <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
               <span className="text-lg font-extrabold tracking-tight">
                 <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>
@@ -572,6 +574,7 @@ export default function Dashboard() {
             isProcessing={isProcessing}
             template={activeMeetingData.template}
             decisionTitle={activeMeetingData.decisionTitle}
+            rolesInfo={activeMeetingData.rolesInfo}
           />
         )}
         <TutorialModal isOpen={isTutorialOpen} onClose={handleCloseTutorial} />

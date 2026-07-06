@@ -392,7 +392,7 @@ async def send_standard_message(
             contents.append(genai_types.Content(role=r, parts=[genai_types.Part.from_text(text=m.content)]))
 
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-3.1-flash-lite',
         contents=contents,
         config=genai_types.GenerateContentConfig(
             system_instruction=system_prompt,
@@ -458,7 +458,7 @@ async def stream_standard_message(
         try:
             # We must use generate_content_stream to get SSE streaming
             response_stream = client.models.generate_content_stream(
-                model='gemini-2.5-flash',
+                model='gemini-3.1-flash-lite',
                 contents=contents,
                 config=genai_types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -520,6 +520,13 @@ async def chat_stream(
     )
     db.add(new_meeting)
 
+    # Prepare Context Prompt for the board
+    context_str = "User Context:\n"
+    if current_user.profile_data:
+        for k, v in current_user.profile_data.items():
+            if v:
+                context_str += f"- {k.capitalize()}: {v}\n"
+
     # Optional: Link to chat session
     user_msg = None
     asst_msg = None
@@ -530,42 +537,46 @@ async def chat_stream(
             session.updated_at = datetime.datetime.utcnow()
             user_msg = ChatMessage(session_id=session.id, role="user", content=body.prompt)
             db.add(user_msg)
+            
+            # Generate a 1-2 paragraph executive summary
+            client = genai.Client()
+            try:
+                summary_prompt = f"Write a professional, 1-2 paragraph executive summary confirming that you are convening the {template_type.value} board to analyze the following decision. Do not use Markdown headings. Be concise and engaging.\n\nDecision:\n{body.prompt}"
+                response = client.models.generate_content(
+                    model='gemini-3.1-flash-lite',
+                    contents=summary_prompt,
+                )
+                summary_text = response.text or f"I have convened the {template_type.value} board."
+            except Exception as e:
+                logger.error(f"Failed to generate summary: {e}")
+                summary_text = f"I have convened the {template_type.value} board."
+
             # The assistant message holds the meeting UI
             asst_msg = ChatMessage(
                 session_id=session.id, 
                 role="assistant", 
-                content=f"I have convened the {template_type.value} board.", 
+                content=summary_text, 
                 is_agentic=True,
                 meeting_id=meeting_id
             )
             db.add(asst_msg)
+            await db.flush() # Ensure it's in DB before pulling history
+
+            # If session is provided, add chat history as context
+            hist_result = await db.execute(
+                select(ChatMessage)
+                .filter(ChatMessage.session_id == body.session_id)
+                .order_by(ChatMessage.created_at.asc())
+            )
+            history = hist_result.scalars().all()
+            if history:
+                context_str += "\nPrevious Chat Context:\n"
+                for m in history:
+                    if not m.is_agentic and m.id != user_msg.id: # Ignore agent reports
+                        role_str = "User" if m.role == "user" else "Chief of Staff"
+                        context_str += f"{role_str}: {m.content}\n"
 
     await db.commit()
-
-    # Prepare Context Prompt
-    # Inject user's profile data if available
-    final_prompt = body.prompt
-    context_str = "User Context:\n"
-    if current_user.profile_data:
-        for k, v in current_user.profile_data.items():
-            if v:
-                context_str += f"- {k.capitalize()}: {v}\n"
-    
-    # If session is provided, add chat history as context
-    if body.session_id:
-        hist_result = await db.execute(
-            select(ChatMessage)
-            .filter(ChatMessage.session_id == body.session_id)
-            .order_by(ChatMessage.created_at.asc())
-        )
-        history = hist_result.scalars().all()
-        if history:
-            context_str += "\nPrevious Chat Context:\n"
-            for m in history:
-                if not m.is_agentic: # Ignore massive agent reports in the context
-                    role_str = "User" if m.role == "user" else "Chief of Staff"
-                    context_str += f"{role_str}: {m.content}\n"
-            
     final_prompt = f"{context_str}\nTask:\n{body.prompt}"
 
     async def event_generator():
