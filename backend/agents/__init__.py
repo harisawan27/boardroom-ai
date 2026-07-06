@@ -255,9 +255,10 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
     specialist_texts = {}
 
     async def orchestrator():
-        batch_size = 6
+        batch_size = 3  # 3 at a time with 1s stagger = 3 RPM max, well within 15 RPM limit
         roles = config["roles"]
         current_context = user_message
+
         
         for i in range(0, len(roles), batch_size):
             if cancel_event.is_set():
@@ -274,8 +275,6 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                         "message": "⏳ Reviewing colleagues' notes..."
                     })
             
-            await asyncio.sleep(0.1)
-            
             # Update status to thinking for current batch
             for role in batch:
                 await queue.put({
@@ -285,18 +284,27 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                     "message": ""
                 })
 
-            batch_tasks = [asyncio.create_task(stream_agent(role, current_context, queue)) for role in batch]
-            await asyncio.gather(*batch_tasks)
+            # Stagger task starts by 1s each to avoid simultaneous API hammering
+            batch_tasks = []
+            for j, role in enumerate(batch):
+                if j > 0:
+                    await asyncio.sleep(1.0)
+                if cancel_event.is_set():
+                    break
+                task = asyncio.create_task(stream_agent(role, current_context, queue))
+                batch_tasks.append(task)
             
-            # Build context for next batch using accumulated specialist_texts
-            # Note: specialist_texts is populated by the consumer loop below
+            if batch_tasks:
+                await asyncio.gather(*batch_tasks)
+            
+            # Build context for next batch
             if i + batch_size < len(roles) and not cancel_event.is_set():
                 current_context += "\n\n### Previous Board Member Analyses:\n"
                 for role in batch:
-                    # Wait briefly to ensure the consumer loop processed the 'done' event
                     await asyncio.sleep(0.2)
                     current_context += f"**{role['title']}**: {specialist_texts.get(role['key'], 'No analysis provided.')}\n\n"
                 current_context += "Please critically review the above analyses and build upon them in your own assessment."
+
 
     orch_task = asyncio.create_task(orchestrator())
     specialist_texts = {}

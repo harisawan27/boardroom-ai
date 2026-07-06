@@ -42,9 +42,16 @@ export default function AgentStream({ role, thinking, text, status, voteData }: 
 
   const isThinking = status === "thinking";
   
+  // Strip any remaining <think>...</think> tags from display text (safety net)
+  const displayText = text
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/^\s*Final Analysis:\s*/i, "")
+    .replace(/^\s*\*\*Final Analysis:\*\*\s*/i, "")
+    .trim();
+
   // Extract vote and confidence from live text, fallback to passed report data
-  const voteMatch = text.match(/VOTE:\s*(YES|NO|DEFER|APPROVE|REJECT)/i);
-  const confMatch = text.match(/CONFIDENCE:\s*(\d+)/i);
+  const voteMatch = displayText.match(/VOTE:\s*(YES|NO|DEFER|APPROVE|REJECT)/i);
+  const confMatch = displayText.match(/CONFIDENCE:\s*(\d+)/i);
   
   const currentVote = voteData?.vote || (voteMatch ? voteMatch[1].toUpperCase() : null);
   const currentConf = voteData?.confidence ?? (confMatch ? parseInt(confMatch[1], 10) : null);
@@ -67,7 +74,7 @@ export default function AgentStream({ role, thinking, text, status, voteData }: 
             {role.icon}
           </div>
           <div className="text-left">
-            <span className="text-sm font-semibold text-slate-900 dark:text-white block">{role.key}</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-white block">{role.name || role.key}</span>
             <span className="text-[10px] text-slate-500 dark:text-slate-500">{role.title}</span>
           </div>
         </div>
@@ -170,10 +177,10 @@ export default function AgentStream({ role, thinking, text, status, voteData }: 
           {/* Main Analysis Text */}
           <div
             ref={scrollRef}
-            className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90 dark:opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2 prose prose-sm prose-slate dark:prose-invert max-w-none"
+            className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed opacity-90 dark:opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2 prose prose-sm prose-slate dark:prose-invert max-w-none"
           >
-            {text ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+            {displayText ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
             ) : (
               thinking ? "" : "Initializing analysis..."
             )}
