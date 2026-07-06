@@ -215,7 +215,7 @@ export default function Dashboard() {
       const tempAsstId = (Date.now() + 1).toString();
       setMessages(prev => [...prev, 
         { id: tempUserId, role: "user", content: userText },
-        { id: tempAsstId, role: "assistant", content: "", is_agentic: true }
+        { id: tempAsstId, role: "assistant", content: "I am convening the board to analyze your request. Please wait while they deliberate.", is_agentic: true }
       ]);
 
       const newMeetingData: ActiveMeetingData = {
@@ -507,10 +507,16 @@ export default function Dashboard() {
                               setIsCanvasOpen(true);
                             }
                           }}
-                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-500/20 dark:hover:to-indigo-500/20 border border-blue-200/50 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium rounded-xl transition-all shadow-sm"
+                          className={`mt-3 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-500/20 dark:hover:to-indigo-500/20 border border-blue-200/50 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium rounded-xl transition-all shadow-sm ${
+                            isProcessing && index === messages.length - 1 ? 'animate-pulse' : ''
+                          }`}
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                          Open Board Report
+                          {isProcessing && index === messages.length - 1 ? (
+                            <svg className="animate-spin w-4 h-4 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          )}
+                          {isProcessing && index === messages.length - 1 ? "Board is deliberating..." : "Open Board Report"}
                         </button>
                       )}
                     </div>

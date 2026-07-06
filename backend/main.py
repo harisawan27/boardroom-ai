@@ -555,31 +555,31 @@ async def chat_stream(
             user_msg = ChatMessage(session_id=session.id, role="user", content=body.prompt)
             db.add(user_msg)
             
+            # The assistant message holds the meeting UI
+            template_name_formatted = template_type.value.replace("_", " ").title()
+            asst_msg = ChatMessage(
+                session_id=session.id, 
+                role="assistant", 
+                content=f"I am convening the {template_name_formatted} to analyze this decision.", 
+                is_agentic=True,
+                meeting_id=meeting_id
+            )
+            db.add(asst_msg)
+            await db.commit() # Commit immediately so it is not lost if the user cancels early
+            
             # Generate a 1-2 paragraph executive summary
             client = genai.Client()
             try:
-                template_name_formatted = template_type.value.replace("_", " ").title()
                 summary_prompt = f"Write a professional, 1-2 paragraph executive summary confirming that you are convening the {template_name_formatted} to analyze the following decision. Do not use Markdown headings. Be concise and engaging.\n\nDecision:\n{body.prompt}"
                 response = client.models.generate_content(
                     model='gemini-3.1-flash-lite',
                     contents=summary_prompt,
                 )
-                summary_text = response.text or f"I have convened the {template_name_formatted}."
+                if response.text:
+                    asst_msg.content = response.text
+                    await db.commit()
             except Exception as e:
                 logger.error(f"Failed to generate summary: {e}")
-                template_name_formatted = template_type.value.replace("_", " ").title()
-                summary_text = f"I have convened the {template_name_formatted}."
-
-            # The assistant message holds the meeting UI
-            asst_msg = ChatMessage(
-                session_id=session.id, 
-                role="assistant", 
-                content=summary_text, 
-                is_agentic=True,
-                meeting_id=meeting_id
-            )
-            db.add(asst_msg)
-            await db.flush() # Ensure it's in DB before pulling history
 
             # If session is provided, add chat history as context
             hist_result = await db.execute(
