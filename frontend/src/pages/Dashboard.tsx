@@ -32,6 +32,8 @@ interface ActiveMeetingData {
 export default function Dashboard() {
   const token = useAuthStore((state) => state.token);
   const addSession = useSessionStore((state) => state.addSession);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("STARTUP_BOARD");
@@ -51,15 +53,12 @@ export default function Dashboard() {
     setTimeout(() => setCopiedId(null), 2000);
   };
   
-  // Tutorial State
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [hasSeenTutorial, setHasSeenTutorial] = useState(() => localStorage.getItem("hasSeenTutorial") === "true");
 
-  // Chat Input State
   const [isConveneBoardSelected, setIsConveneBoardSelected] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Canvas State
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [activeMeetingData, setActiveMeetingData] = useState<ActiveMeetingData | null>(null);
 
@@ -75,12 +74,11 @@ export default function Dashboard() {
     localStorage.setItem("hasSeenTutorial", "true");
   };
 
-  const handleSubmit = (e: React.FormEvent | React.KeyboardEvent) => {
-    e.preventDefault();
+  const handleSend = async (e: React.FormEvent) => {
     if (isConveneBoardSelected) {
       handleConveneBoard();
     } else {
-      handleStandardChat(e as React.FormEvent);
+      handleStandardChat(e);
     }
   };
 
@@ -128,6 +126,8 @@ export default function Dashboard() {
       setMessages(prev => [...prev, { id: tempUserId, role: "user", content: userText }]);
       setMessages(prev => [...prev, { id: tempAsstId, role: "assistant", content: "", thinking: "" }]);
 
+      abortControllerRef.current = new AbortController();
+
       await streamStandardMessage(
         sessionId as string,
         userText,
@@ -143,7 +143,8 @@ export default function Dashboard() {
         },
         () => {
           setIsProcessing(false);
-        }
+        },
+        abortControllerRef.current.signal
       );
     } catch (err) {
       console.error(err);
@@ -160,13 +161,15 @@ export default function Dashboard() {
       await deleteLastTurn(activeSessionId);
       
       const userText = editInput.trim();
-      setMessages(prev => prev.slice(0, -2)); // Remove last two messages from UI optimistically
+      setMessages(prev => prev.slice(0, -2)); 
       
       const tempUserId = Date.now().toString();
       const tempAsstId = (Date.now() + 1).toString();
       
       setMessages(prev => [...prev, { id: tempUserId, role: "user", content: userText }]);
       setMessages(prev => [...prev, { id: tempAsstId, role: "assistant", content: "", thinking: "" }]);
+
+      abortControllerRef.current = new AbortController();
 
       await streamStandardMessage(
         activeSessionId,
@@ -183,7 +186,8 @@ export default function Dashboard() {
         },
         () => {
           setIsProcessing(false);
-        }
+        },
+        abortControllerRef.current.signal
       );
     } catch (err) {
       console.error(err);
@@ -218,12 +222,12 @@ export default function Dashboard() {
       
       setActiveMeetingData(newMeetingData);
       setIsCanvasOpen(true);
+      abortControllerRef.current = new AbortController();
 
       await streamChat(
         sessionId as string,
         selectedTemplate,
         userText,
-        // onRoles
         (roles) => {
           setActiveMeetingData(prev => {
             if (!prev) return prev;
@@ -236,7 +240,6 @@ export default function Dashboard() {
             return { ...prev, rolesInfo: roles, streams: initialStreams };
           });
         },
-        // onThinking
         (agent, text) => {
           setActiveMeetingData((prev: ActiveMeetingData | null) => {
             if (!prev || !prev.streams || !prev.streams[agent]) return prev;
@@ -249,7 +252,6 @@ export default function Dashboard() {
             return { ...prev, streams: updatedStreams };
           });
         },
-        // onChunk
         (agent, text) => {
           setActiveMeetingData((prev: ActiveMeetingData | null) => {
             if (!prev || !prev.streams || !prev.streams[agent]) return prev;
@@ -262,7 +264,6 @@ export default function Dashboard() {
             return { ...prev, streams: updatedStreams };
           });
         },
-        // onStatus
         (agent, status, message) => {
           setActiveMeetingData((prev: ActiveMeetingData | null) => {
             if (!prev || !prev.streams || !prev.streams[agent]) return prev;
@@ -275,7 +276,6 @@ export default function Dashboard() {
             return { ...prev, streams: updatedStreams };
           });
         },
-        // onReport
         (reportData) => {
           setActiveMeetingData((prev: ActiveMeetingData | null) => {
             if (!prev) return prev;
@@ -286,17 +286,15 @@ export default function Dashboard() {
             return { ...prev, streams: updatedStreams, report: reportData };
           });
         },
-        // onError
         (err) => {
           console.error("Board error:", err);
+          setIsProcessing(false);
         },
-        // onComplete
         () => {
           setIsProcessing(false);
-          setIsConveneBoardSelected(false);
-          // Reload session to get the saved messages with the meeting attached
           loadSession(sessionId as string);
-        }
+        },
+        abortControllerRef.current.signal
       );
 
     } catch (err) {
@@ -304,8 +302,6 @@ export default function Dashboard() {
       setIsProcessing(false);
     }
   };
-
-
 
   if (!token) return <AuthModal />;
 
@@ -435,13 +431,11 @@ export default function Dashboard() {
                           ? (function() {
                               let t = msg.content || "";
                               let th = msg.thinking || "";
-                              // Try closed tag
                               const match = t.match(/<think>([\s\S]*?)<\/think>/);
                               if (match) {
                                 th = match[1];
                                 t = t.replace(/<think>[\s\S]*?<\/think>/, "");
                               } else {
-                                // Try unclosed tag (if streaming)
                                 const openMatch = t.match(/<think>([\s\S]*)/);
                                 if (openMatch && !msg.thinking) {
                                   th = openMatch[1];
@@ -487,28 +481,31 @@ export default function Dashboard() {
                           </>
                         );
                       })()}
-                      {msg.is_agentic && msg.meeting && (
+                      {msg.is_agentic && (
                         <button 
                           onClick={() => {
-                            const dbStreamsData = msg.meeting?.streams_data || {};
-                            const streamsObj = Object.fromEntries(
-                              Object.entries(dbStreamsData).filter(([k]) => k !== "_roles")
-                            ) as Record<string, { status: "idle" | "thinking" | "done" | "waiting"; thinking: string; text: string }>;
+                            if (msg.meeting) {
+                              const dbStreamsData = msg.meeting?.streams_data || {};
+                              const streamsObj = Object.fromEntries(
+                                Object.entries(dbStreamsData).filter(([k]) => k !== "_roles")
+                              ) as Record<string, { status: "idle" | "thinking" | "done" | "waiting"; thinking: string; text: string }>;
 
-                            setActiveMeetingData({
-                              id: msg.meeting?.id,
-                              template: msg.meeting?.template || "STARTUP_BOARD",
-                              decisionTitle: msg.meeting?.prompt ? "Past Board Meeting" : "Live Board Meeting",
-                              report: msg.meeting?.report_data,
-                              rolesInfo: dbStreamsData._roles || [],
-                              streams: streamsObj
-                            });
-                            setIsConveneBoardSelected(true);
-                            setIsCanvasOpen(true);
+                              setActiveMeetingData({
+                                id: msg.meeting?.id,
+                                template: msg.meeting?.template || "STARTUP_BOARD",
+                                decisionTitle: msg.meeting?.prompt ? "Past Board Meeting" : "Live Board Meeting",
+                                report: msg.meeting?.report_data,
+                                rolesInfo: dbStreamsData._roles || [],
+                                streams: streamsObj
+                              });
+                              setIsCanvasOpen(true);
+                            } else if (isProcessing && msg.id === messages[messages.length - 1].id) {
+                              setIsCanvasOpen(true);
+                            }
                           }}
-                          className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 rounded-xl text-sm font-medium transition-colors"
+                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-500/20 dark:hover:to-indigo-500/20 border border-blue-200/50 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium rounded-xl transition-all shadow-sm"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                           Open Board Report
                         </button>
                       )}
@@ -530,11 +527,8 @@ export default function Dashboard() {
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
+                onKeyDown={() => {
+                  // Let default behavior (newline) happen for Enter, including Shift+Enter
                 }}
                 placeholder="Message Chief of Staff or convene the board..."
                 className="w-full bg-transparent border-none py-3.5 sm:py-4 px-4 sm:px-5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 resize-none max-h-48 custom-scrollbar text-sm sm:text-base outline-none"
@@ -591,25 +585,34 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center gap-2 pr-1">
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!input.trim() || isProcessing}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${
-                      !input.trim() || isProcessing
-                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                        : isConveneBoardSelected
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:scale-105 shadow-blue-500/20'
-                        : 'bg-blue-500 text-white hover:scale-105 hover:bg-blue-600'
-                    }`}
-                  >
-                    {isProcessing && isCanvasOpen ? (
-                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                    ) : (
+                  {isProcessing ? (
+                    <button
+                      onClick={() => abortControllerRef.current?.abort()}
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 transition-colors shadow-sm"
+                      title="Stop Generation"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="12" rx="2" ry="2" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim()}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                        !input.trim()
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                          : isConveneBoardSelected
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:scale-105 shadow-blue-500/20'
+                          : 'bg-blue-500 text-white hover:scale-105 hover:bg-blue-600'
+                      }`}
+                      title="Send Message"
+                    >
                       <svg className="w-4 h-4 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
-                    )}
-                  </button>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

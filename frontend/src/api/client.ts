@@ -53,7 +53,8 @@ export async function streamChat(
   onStatus: (agent: string, status: string, message?: string) => void,
   onReport: (report: any) => void,
   onError: (error: string) => void,
-  onComplete: () => void
+  onComplete: () => void,
+  abortSignal?: AbortSignal
 ) {
   try {
     const token = localStorage.getItem("token");
@@ -66,6 +67,7 @@ export async function streamChat(
         method: "POST",
         headers,
         body: JSON.stringify({ template, prompt, session_id: sessionId }),
+        signal: abortSignal,
       }
     );
 
@@ -115,8 +117,12 @@ export async function streamChat(
       }
     }
     onComplete();
-  } catch (error) {
-    onError(error instanceof Error ? error.message : "Stream failed");
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      onError("Generation stopped.");
+    } else {
+      onError(error instanceof Error ? error.message : "Stream failed");
+    }
     onComplete();
   }
 }
@@ -212,7 +218,8 @@ export async function streamStandardMessage(
   onThinking: (text: string) => void,
   onChunk: (text: string) => void,
   onError: (error: string) => void,
-  onComplete: () => void
+  onComplete: () => void,
+  abortSignal?: AbortSignal
 ) {
   try {
     const token = localStorage.getItem("token");
@@ -226,6 +233,7 @@ export async function streamStandardMessage(
         session_id: sessionId,
         message,
       }),
+      signal: abortSignal,
     });
 
     if (!response.ok) {
@@ -269,6 +277,10 @@ export async function streamStandardMessage(
       }
     }
   } catch (error: any) {
-    onError(error.message);
+    if (error.name === 'AbortError') {
+      onError("Generation stopped.");
+    } else {
+      onError(error.message);
+    }
   }
 }

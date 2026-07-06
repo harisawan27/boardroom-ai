@@ -490,20 +490,19 @@ async def stream_standard_message(
                     full_text += parser.buffer
                     yield {"data": json.dumps({"type": "chunk", "text": parser.buffer})}
             
-            # Save assistant message in background after stream completes
-            async def save_msg():
-                async with AsyncSessionLocal() as session_db:
-                    asst_msg = ChatMessage(session_id=session.id, role="assistant", content=full_text, thinking=full_thinking)
-                    session_db.add(asst_msg)
-                    await session_db.commit()
-                    
-            import asyncio
-            asyncio.create_task(save_msg())
-            yield {"data": json.dumps({"type": "done"})}
-            
         except Exception as e:
             logger.error(f"Stream error: {e}", exc_info=True)
             yield {"data": json.dumps({"type": "error", "message": str(e)})}
+        finally:
+            if full_text or full_thinking:
+                async def save_msg():
+                    async with AsyncSessionLocal() as session_db:
+                        asst_msg = ChatMessage(session_id=session.id, role="assistant", content=full_text, thinking=full_thinking)
+                        session_db.add(asst_msg)
+                        await session_db.commit()
+                import asyncio
+                asyncio.create_task(save_msg())
+            yield {"data": json.dumps({"type": "done"})}
 
     return EventSourceResponse(event_generator())
 
@@ -624,19 +623,23 @@ async def chat_stream(
                 except:
                     pass
             
-            # After stream completes, save the report_data to DB
-            if final_report_data or streams_accumulator:
-                async with AsyncSessionLocal() as session_db:
-                    result = await session_db.execute(select(Meeting).filter(Meeting.id == meeting_id))
-                    db_meeting = result.scalars().first()
-                    if db_meeting:
-                        db_meeting.report_data = final_report_data
-                        db_meeting.streams_data = streams_accumulator
-                        await session_db.commit()
-                
         except Exception as e:
             logger.error(f"Stream error: {e}", exc_info=True)
             yield {"data": json.dumps({"type": "error", "message": str(e)})}
+        finally:
+            # After stream completes, save the report_data to DB
+            if final_report_data or streams_accumulator:
+                async def save_meeting():
+                    async with AsyncSessionLocal() as session_db:
+                        result = await session_db.execute(select(Meeting).filter(Meeting.id == meeting_id))
+                        db_meeting = result.scalars().first()
+                        if db_meeting:
+                            if final_report_data:
+                                db_meeting.report_data = final_report_data
+                            db_meeting.streams_data = streams_accumulator
+                            await session_db.commit()
+                import asyncio
+                asyncio.create_task(save_meeting())
 
     return EventSourceResponse(event_generator())
 
