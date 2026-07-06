@@ -308,7 +308,20 @@ export default function Dashboard() {
           setIsProcessing(false);
           loadSession(sessionId as string);
         },
-        abortControllerRef.current.signal
+        abortControllerRef.current.signal,
+        // onFinal: replace raw streamed text with clean post-processed version
+        (agent, text, thinking) => {
+          setActiveMeetingData((prev: ActiveMeetingData | null) => {
+            if (!prev || !prev.streams) return prev;
+            const updatedStreams = { ...prev.streams };
+            updatedStreams[agent] = {
+              text,
+              thinking,
+              status: "done"
+            };
+            return { ...prev, streams: updatedStreams };
+          });
+        }
       );
 
     } catch (err) {

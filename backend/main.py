@@ -619,6 +619,15 @@ async def chat_stream(
                         final_report_data = data.get("data")
                     elif data.get("type") == "roles":
                         streams_accumulator["_roles"] = data.get("data")
+                    elif data.get("type") == "final":
+                        # Clean split of text + thinking after full collection
+                        agent = data.get("agent")
+                        if agent:
+                            streams_accumulator[agent] = {
+                                "text": data.get("text", ""),
+                                "thinking": data.get("thinking", ""),
+                                "status": "done"
+                            }
                     elif data.get("type") in ["chunk", "thinking"]:
                         agent = data.get("agent")
                         if agent:

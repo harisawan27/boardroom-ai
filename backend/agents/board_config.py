@@ -26,8 +26,8 @@ from templates.board_templates import TemplateType
 # Strategy: 3 agents on gemma-31b, 3 agents on gemini-2.0-flash-lite
 # ---------------------------------------------------------------------------
 MODEL_A = "gemma-4-31b-it"              # Slots: 3 specialists
-MODEL_B = "gemini-2.0-flash-lite"        # Slots: 3 specialists (replaces unreliable 26b)
-MODEL_MOD = "gemini-2.0-flash-lite"      # Slot: moderator
+MODEL_B = "gemma-4-31b-it"              # Slots: 3 specialists
+MODEL_MOD = "gemini-3.1-flash-lite"      # Slot: moderator
 
 # Token budgets
 SPECIALIST_TOKENS = 1024

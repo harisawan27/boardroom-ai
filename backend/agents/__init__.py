@@ -186,67 +186,66 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
             try:
                 if attempt > 0:
                     import random
-                    await asyncio.sleep(random.uniform(1.0, 3.0) * attempt)
+                    delay = random.uniform(2.0, 5.0) * attempt
+                    logger.info(f"Retry {attempt} for {agent_config['key']}, waiting {delay:.1f}s...")
+                    await asyncio.sleep(delay)
                     
                 contents = [genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_msg)])]
                 
-                async def _run_stream():
-                    response_stream = await client.aio.models.generate_content_stream(
-                        model=agent_config["model"],
-                        contents=contents,
-                        config=genai_types.GenerateContentConfig(
-                            system_instruction=agent_config["prompt"],
-                            temperature=agent_config.get("temperature", 0.7),
-                            max_output_tokens=agent_config.get("tokens", 2048)
-                        )
+                response_stream = await client.aio.models.generate_content_stream(
+                    model=agent_config["model"],
+                    contents=contents,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=agent_config["prompt"],
+                        temperature=agent_config.get("temperature", 0.7),
+                        max_output_tokens=agent_config.get("tokens", 2048)
                     )
-                    
-                    parser = AgentStreamParser()
-                    full_text = ""
-                    emitted_main_text = False
-                    
-                    async for chunk in response_stream:
-                        if cancel_event.is_set():
-                            break
-                        if chunk.text:
-                            full_text += chunk.text
-                            for is_thinking, content in parser.process_chunk(chunk.text):
-                                if not is_thinking and content.strip():
-                                    emitted_main_text = True
-                                await q.put({
-                                    "type": "thinking" if is_thinking else "chunk",
-                                    "agent": agent_config["key"],
-                                    "text": content
-                                })
-                                
-                    if parser.buffer and not cancel_event.is_set():
-                        if not parser.is_thinking and parser.buffer.strip():
-                            emitted_main_text = True
-                        await q.put({
-                            "type": "thinking" if parser.is_thinking else "chunk",
-                            "agent": agent_config["key"],
-                            "text": parser.buffer
-                        })
-                    
-                    if not emitted_main_text and full_text.strip() and not cancel_event.is_set():
+                )
+                
+                # Collect ALL text first — streaming parse is unreliable for think tags
+                full_text = ""
+                async for chunk in response_stream:
+                    if cancel_event.is_set():
+                        break
+                    if chunk.text:
+                        full_text += chunk.text
+                        # Stream raw text immediately so user sees progress
                         await q.put({
                             "type": "chunk",
                             "agent": agent_config["key"],
-                            "text": "\n\n### Analysis (Fallback)\n" + full_text
+                            "text": chunk.text
                         })
-                        
-                    return full_text
-                
-                # Enforce a strict 45-second timeout on the network call to prevent infinite socket hangs
-                full_text = await asyncio.wait_for(_run_stream(), timeout=45.0)
+
+                if not cancel_event.is_set() and full_text.strip():
+                    # Now post-process: extract <think>...</think> blocks from full_text
+                    import re as _re
+                    think_blocks = _re.findall(r'<think>([\s\S]*?)</think>', full_text, _re.IGNORECASE)
+                    clean_text = _re.sub(r'<think>[\s\S]*?</think>', '', full_text, flags=_re.IGNORECASE).strip()
+                    
+                    thinking_content = "\n".join(think_blocks).strip()
+                    
+                    # If model put thinking inline without tags (e.g. wrote everything as reasoning)
+                    # and clean_text is empty, treat the whole thing as text
+                    if not clean_text and full_text.strip():
+                        clean_text = full_text.strip()
+                        thinking_content = ""
+                    
+                    # Emit a "replace" event with the final clean split
+                    await q.put({
+                        "type": "final",
+                        "agent": agent_config["key"],
+                        "text": clean_text,
+                        "thinking": thinking_content
+                    })
+
                 await q.put({"type": "done", "agent": agent_config["key"], "full_text": full_text})
-                return # success
+                return  # success
                 
             except Exception as e:
                 logger.warning(f"Error in {agent_config['key']} (attempt {attempt+1}/{max_retries}): {e}")
                 if attempt == max_retries - 1:
                     logger.error(f"Final error in {agent_config['key']}: {e}")
-                    err_msg = f"\n\n*[System: Error connecting to model after {max_retries} attempts.]*\nError: {e}"
+                    err_msg = f"*[Agent unavailable after {max_retries} attempts: {e}]*"
                     await q.put({"type": "chunk", "agent": agent_config["key"], "text": err_msg})
                     await q.put({"type": "done", "agent": agent_config["key"], "full_text": err_msg})
 

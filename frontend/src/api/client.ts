@@ -54,7 +54,8 @@ export async function streamChat(
   onReport: (report: any) => void,
   onError: (error: string) => void,
   onComplete: () => void,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  onFinal?: (agent: string, text: string, thinking: string) => void
 ) {
   try {
     const token = localStorage.getItem("token");
@@ -102,6 +103,10 @@ export async function streamChat(
                 break;
               case "chunk":
                 onChunk(data.agent, data.text);
+                break;
+              case "final":
+                // Replace raw streamed text with clean post-processed version
+                if (onFinal) onFinal(data.agent, data.text, data.thinking || "");
                 break;
               case "report":
                 onReport(data.data);
