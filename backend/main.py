@@ -38,7 +38,7 @@ from templates.board_templates import (
     TEMPLATE_METADATA,
 )
 from agents import run_meeting
-from database import get_db
+from database import get_db, init_db, AsyncSessionLocal
 from models.user import User
 from models.meeting import Meeting
 from models.chat import ChatSession, ChatMessage
@@ -312,6 +312,41 @@ async def delete_session(
     await db.commit()
     return {"status": "success"}
 
+@app.delete("/chat/sessions/{session_id}/last_turn", tags=["Chat"])
+async def delete_last_turn(
+    session_id: str, 
+    current_user: User = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(ChatSession)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+    )
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Get last two messages
+    hist_result = await db.execute(
+        select(ChatMessage)
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(2)
+    )
+    history = hist_result.scalars().all()
+    
+    # Check if the last message is assistant and second to last is user
+    if len(history) >= 2 and history[0].role == "assistant" and history[1].role == "user":
+        await db.delete(history[0])
+        await db.delete(history[1])
+        await db.commit()
+    elif len(history) == 1 and history[0].role == "user":
+        await db.delete(history[0])
+        await db.commit()
+        
+    return {"status": "success"}
+
+
 @app.post("/chat/message", response_model=ChatMessageResponse, tags=["Chat"])
 async def send_standard_message(
     body: StandardMessageRequest, 
@@ -379,6 +414,81 @@ async def send_standard_message(
         .filter(ChatMessage.id == asst_msg.id)
     )
     return result.scalars().first()
+
+@app.post("/chat/stream_message", tags=["Chat"])
+@limiter.limit(os.getenv("RATE_LIMIT", "10/minute"))
+async def stream_standard_message(
+    request: Request,
+    body: StandardMessageRequest, 
+    current_user: User = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(ChatSession).filter(ChatSession.id == body.session_id, ChatSession.user_id == current_user.id))
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    user_msg = ChatMessage(session_id=session.id, role="user", content=body.message)
+    db.add(user_msg)
+    
+    if session.title == "New Brainstorming Session":
+        session.title = body.message[:30] + "..." if len(body.message) > 30 else body.message
+    session.updated_at = datetime.datetime.utcnow()
+    await db.commit()
+
+    hist_result = await db.execute(
+        select(ChatMessage)
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at.asc())
+    )
+    history = hist_result.scalars().all()
+    
+    contents = []
+    system_prompt = "You are the Chief of Staff for a CEO. You help them brainstorm and refine proposals. IMPORTANT: Before you answer, you MUST write your internal thought process wrapped in <think>...</think> tags."
+    if current_user.profile_data:
+        system_prompt += f"\nUser Context: {json.dumps(current_user.profile_data)}"
+    
+    for m in history:
+        if m.role == "user" or m.role == "assistant":
+            r = "model" if m.role == "assistant" else "user"
+            contents.append(genai_types.Content(role=r, parts=[genai_types.Part.from_text(text=m.content)]))
+
+    async def event_generator():
+        client = genai.Client()
+        try:
+            # We must use generate_content_stream to get SSE streaming
+            response_stream = client.models.generate_content_stream(
+                model='gemini-2.5-flash',
+                contents=contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.7
+                )
+            )
+            
+            full_response = ""
+            for chunk in response_stream:
+                if chunk.text:
+                    full_response += chunk.text
+                    yield {"data": json.dumps({"type": "chunk", "text": chunk.text})}
+            
+            # Save assistant message in background after stream completes
+            async def save_msg():
+                async with AsyncSessionLocal() as session_db:
+                    asst_msg = ChatMessage(session_id=session.id, role="assistant", content=full_response)
+                    session_db.add(asst_msg)
+                    await session_db.commit()
+                    
+            import asyncio
+            asyncio.create_task(save_msg())
+            yield {"data": json.dumps({"type": "done"})}
+            
+        except Exception as e:
+            logger.error(f"Stream error: {e}", exc_info=True)
+            yield {"data": json.dumps({"type": "error", "message": str(e)})}
+
+    return EventSourceResponse(event_generator())
+
 
 
 

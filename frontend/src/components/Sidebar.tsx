@@ -30,6 +30,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
   const [sessionToDelete, setSessionToDelete] = useState<SessionInfo | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // PWA state
@@ -103,20 +104,20 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         />
       )}
 
+      {openDropdownId && (
+        <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)}></div>
+      )}
       {/* Sidebar Container */}
-      <div className={`fixed md:static inset-y-0 left-0 w-64 h-screen border-r border-slate-200 dark:border-white/5 bg-slate-50/90 dark:bg-[#06080f]/90 backdrop-blur-xl flex flex-col flex-shrink-0 z-40 transition-transform duration-300 ease-in-out ${
-        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      <div className={`fixed md:relative inset-y-0 left-0 h-screen bg-slate-50/90 dark:bg-[#06080f]/90 backdrop-blur-xl flex flex-col flex-shrink-0 z-40 transition-all duration-300 ease-in-out overflow-hidden ${
+        isOpen ? 'w-64 translate-x-0 border-r border-slate-200 dark:border-white/5' : 'w-0 -translate-x-full md:translate-x-0 border-r-0'
       }`}>
+        <div className="w-64 h-full flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-white shadow-md ring-1 ring-slate-900/5 flex items-center justify-center p-1">
               <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="w-px h-6 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
-            <span className="text-xl font-extrabold tracking-tight -ml-1">
-              <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>
-            </span>
           </div>
           {onClose && (
             <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
@@ -199,25 +200,31 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
                     )}
                   </div>
                 </button>
-                <div className="absolute right-2 flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                <div className="absolute right-2 flex items-center z-50">
                   <button 
-                    onClick={() => { setEditingId(s.id); setEditTitle(s.title); }}
-                    className="p-1.5 text-slate-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10"
-                    title="Rename Chat"
+                    onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === s.id ? null : s.id); }}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0-6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0-6a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
                   </button>
-                  <button 
-                    onClick={() => setSessionToDelete(s)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
-                    title="Delete Chat"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  {openDropdownId === s.id && (
+                    <div className="absolute top-8 right-0 w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden py-1">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setEditingId(s.id); setEditTitle(s.title); setOpenDropdownId(null); }}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        Rename
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setSessionToDelete(s); setOpenDropdownId(null); }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -301,6 +308,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         confirmText="Delete"
       />
     </div>
+      </div>
     </>
   );
 }

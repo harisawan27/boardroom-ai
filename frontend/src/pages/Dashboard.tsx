@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { streamChat, getSession, createSession, sendStandardMessage, type RoleInfo } from "../api/client";
+import { streamChat, getSession, createSession, streamStandardMessage, deleteLastTurn, type RoleInfo } from "../api/client";
 import MeetingCanvas from "../components/MeetingCanvas";
 import AuthModal from "../components/AuthModal";
 import Sidebar from "../components/Sidebar";
@@ -14,6 +14,7 @@ interface Message {
   content: string;
   is_agentic?: boolean;
   meeting?: any;
+  thinking?: string;
 }
 
 interface ActiveMeetingData {
@@ -34,7 +35,18 @@ export default function Dashboard() {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | undefined>();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editInput, setEditInput] = useState("");
+  const [thinkingExpandedId, setThinkingExpandedId] = useState<string | null>(null);
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
   
   // Tutorial State
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
@@ -107,15 +119,71 @@ export default function Dashboard() {
         addSession(newSession);
       }
 
-      // Optimistic update
-      const tempId = Date.now().toString();
-      setMessages(prev => [...prev, { id: tempId, role: "user", content: userText }]);
+      const tempUserId = Date.now().toString();
+      const tempAsstId = (Date.now() + 1).toString();
+      
+      setMessages(prev => [...prev, { id: tempUserId, role: "user", content: userText }]);
+      setMessages(prev => [...prev, { id: tempAsstId, role: "assistant", content: "", thinking: "" }]);
 
-      const responseMsg = await sendStandardMessage(sessionId as string, userText);
-      setMessages(prev => [...prev, responseMsg]);
+      await streamStandardMessage(
+        sessionId as string,
+        userText,
+        (text) => {
+          setMessages(prev => prev.map(m => m.id === tempAsstId ? { ...m, thinking: (m.thinking || "") + text } : m));
+        },
+        (text) => {
+          setMessages(prev => prev.map(m => m.id === tempAsstId ? { ...m, content: (m.content || "") + text } : m));
+        },
+        (error) => {
+          console.error(error);
+          setIsProcessing(false);
+        },
+        () => {
+          setIsProcessing(false);
+        }
+      );
     } catch (err) {
       console.error(err);
-    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUpdatePrompt = async () => {
+    if (!editInput.trim() || !activeSessionId || isProcessing) return;
+    setIsProcessing(true);
+    setEditingMessageId(null);
+    
+    try {
+      await deleteLastTurn(activeSessionId);
+      
+      const userText = editInput.trim();
+      setMessages(prev => prev.slice(0, -2)); // Remove last two messages from UI optimistically
+      
+      const tempUserId = Date.now().toString();
+      const tempAsstId = (Date.now() + 1).toString();
+      
+      setMessages(prev => [...prev, { id: tempUserId, role: "user", content: userText }]);
+      setMessages(prev => [...prev, { id: tempAsstId, role: "assistant", content: "", thinking: "" }]);
+
+      await streamStandardMessage(
+        activeSessionId,
+        userText,
+        (text) => {
+          setMessages(prev => prev.map(m => m.id === tempAsstId ? { ...m, thinking: (m.thinking || "") + text } : m));
+        },
+        (text) => {
+          setMessages(prev => prev.map(m => m.id === tempAsstId ? { ...m, content: (m.content || "") + text } : m));
+        },
+        (error) => {
+          console.error(error);
+          setIsProcessing(false);
+        },
+        () => {
+          setIsProcessing(false);
+        }
+      );
+    } catch (err) {
+      console.error(err);
       setIsProcessing(false);
     }
   };
@@ -250,11 +318,11 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col relative z-10 h-screen w-full md:w-auto">
         <nav className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between glass">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             <div className="flex items-center gap-2.5">
-              <img src="/logo-icon.svg" alt="Boardroom AI Logo" className="w-6 h-6" />
+              <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-6 h-6 object-contain" />
               <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
               <span className="text-lg font-extrabold tracking-tight">
                 <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>
@@ -300,27 +368,89 @@ export default function Dashboard() {
               </div>
             )}
 
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}>
+            {messages.map((msg, index) => {
+              const isLastUserMessage = msg.role === "user" && index === messages.map(m => m.role).lastIndexOf("user");
+              
+              return (
+              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-slide-up group`}>
                 {msg.role === "user" ? (
-                  <div className="max-w-[85%]">
-                    <div className="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-lg text-sm leading-relaxed whitespace-pre-wrap">
-                      {msg.content}
-                    </div>
+                  <div className="max-w-[85%] flex flex-col items-end w-full">
+                    {editingMessageId === msg.id ? (
+                      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl p-3 shadow-lg">
+                        <textarea
+                          value={editInput}
+                          onChange={(e) => setEditInput(e.target.value)}
+                          className="w-full bg-transparent border-none focus:ring-0 resize-none text-slate-800 dark:text-slate-200 text-sm"
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button onClick={() => setEditingMessageId(null)} className="px-4 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            Cancel
+                          </button>
+                          <button onClick={handleUpdatePrompt} className="px-4 py-1.5 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+                            Update
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-lg text-sm leading-relaxed whitespace-pre-wrap">
+                          {msg.content}
+                        </div>
+                        <div className="flex items-center gap-1 mt-1 mr-1 text-slate-400">
+                          {isLastUserMessage && (
+                            <button onClick={() => { setEditingMessageId(msg.id); setEditInput(msg.content); }} className="p-1.5 hover:text-blue-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Edit Prompt">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </button>
+                          )}
+                          <button onClick={() => handleCopy(msg.content, msg.id)} className="p-1.5 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Copy Prompt">
+                            {copiedId === msg.id ? <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="max-w-[85%] flex items-start gap-3">
                     <div className="w-8 h-8 rounded-full bg-white shadow-sm ring-1 ring-slate-900/5 flex items-center justify-center flex-shrink-0 p-1.5">
                       <img src="/boardroom-ai.svg" alt="Avatar" className="w-full h-full object-contain" />
                     </div>
-                    <div>
+                    <div className="flex flex-col items-start w-full">
+                      {msg.thinking && (
+                        <div className="mb-2 w-full max-w-xl">
+                          <button 
+                            onClick={() => setThinkingExpandedId(thinkingExpandedId === msg.id ? null : msg.id)}
+                            className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-full"
+                          >
+                            <svg className={`w-3.5 h-3.5 transition-transform ${thinkingExpandedId === msg.id ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            {isProcessing && index === messages.length - 1 ? (
+                              <span className="flex items-center gap-1">
+                                Thinking<span className="animate-pulse">...</span>
+                              </span>
+                            ) : "Thought Process"}
+                          </button>
+                          {thinkingExpandedId === msg.id && (
+                            <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-white/5 rounded-xl text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                              {msg.thinking}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {msg.content && (
                       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-sm text-sm leading-relaxed whitespace-pre-wrap">
                         {msg.content}
+                      </div>
+                      )}
+                      <div className="flex items-center gap-1 mt-1 ml-1 text-slate-400">
+                        <button onClick={() => handleCopy(msg.content, msg.id)} className="p-1.5 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Copy Text">
+                          {copiedId === msg.id ? <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
+                        </button>
                       </div>
                       {msg.is_agentic && msg.meeting && (
                         <button 
                           onClick={() => openPastMeeting(msg.meeting)}
-                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 rounded-xl text-sm font-medium transition-colors"
+                          className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 rounded-xl text-sm font-medium transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                           Open Board Report
@@ -330,7 +460,8 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
             <div ref={endOfChatRef} />
           </div>
         </main>

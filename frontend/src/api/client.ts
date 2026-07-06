@@ -192,7 +192,96 @@ export async function deleteSession(sessionId: string): Promise<any> {
   return response.data;
 }
 
+export async function deleteLastTurn(sessionId: string): Promise<any> {
+  const response = await apiClient.delete(`/chat/sessions/${sessionId}/last_turn`);
+  return response.data;
+}
+
 export async function sendStandardMessage(sessionId: string, message: string): Promise<any> {
   const response = await apiClient.post("/chat/message", { session_id: sessionId, message });
   return response.data;
+}
+
+export async function streamStandardMessage(
+  sessionId: string,
+  message: string,
+  onThinking: (text: string) => void,
+  onChunk: (text: string) => void,
+  onError: (error: string) => void,
+  onComplete: () => void
+) {
+  try {
+    const token = localStorage.getItem("token");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(`${apiClient.defaults.baseURL}/chat/stream_message`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        session_id: sessionId,
+        message,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      onError(`Stream failed: ${response.status} ${text}`);
+      return;
+    }
+
+    if (!response.body) throw new Error("No response body");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let isThinking = false;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const dataStr = line.substring("data: ".length);
+            if (!dataStr) continue;
+            
+            const data = JSON.parse(dataStr);
+            if (data.type === "chunk" && data.text) {
+              let textChunk = data.text;
+              
+              if (textChunk.includes("<think>")) {
+                isThinking = true;
+                const parts = textChunk.split("<think>");
+                if (parts[0]) onChunk(parts[0]);
+                textChunk = parts[1] || "";
+              }
+              
+              if (isThinking && textChunk.includes("</think>")) {
+                isThinking = false;
+                const parts = textChunk.split("</think>");
+                if (parts[0]) onThinking(parts[0]);
+                if (parts[1]) onChunk(parts[1]);
+              } else if (isThinking) {
+                onThinking(textChunk);
+              } else {
+                onChunk(textChunk);
+              }
+            } else if (data.type === "error") {
+              onError(data.message);
+            } else if (data.type === "done") {
+              onComplete();
+            }
+          } catch (e) {
+            console.error("Error parsing SSE line", line, e);
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    onError(error.message);
+  }
 }
