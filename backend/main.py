@@ -244,8 +244,13 @@ async def create_session(current_user: User = Depends(get_current_user), db: Asy
     session = ChatSession(user_id=current_user.id, title="New Brainstorming Session")
     db.add(session)
     await db.commit()
-    await db.refresh(session)
-    return session
+    
+    result = await db.execute(
+        select(ChatSession)
+        .options(selectinload(ChatSession.messages).selectinload(ChatMessage.meeting))
+        .filter(ChatSession.id == session.id)
+    )
+    return result.scalars().first()
 
 @app.get("/chat/sessions", response_model=List[ChatSessionResponse], tags=["Chat"])
 async def get_sessions(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -287,7 +292,6 @@ async def rename_session(
     
     session.title = body.title
     await db.commit()
-    await db.refresh(session)
     return session
 
 @app.delete("/chat/sessions/{session_id}", tags=["Chat"])
@@ -367,9 +371,14 @@ async def send_standard_message(
     asst_msg = ChatMessage(session_id=session.id, role="assistant", content=ai_text)
     db.add(asst_msg)
     await db.commit()
-    await db.refresh(asst_msg)
     
-    return asst_msg
+    # Re-fetch to satisfy Pydantic relationships
+    result = await db.execute(
+        select(ChatMessage)
+        .options(selectinload(ChatMessage.meeting))
+        .filter(ChatMessage.id == asst_msg.id)
+    )
+    return result.scalars().first()
 
 
 
