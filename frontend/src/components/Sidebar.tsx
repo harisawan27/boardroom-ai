@@ -110,11 +110,12 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         {/* Header */}
         <div className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-lg p-1">
+            <div className="w-8 h-8 rounded-lg bg-white shadow-md ring-1 ring-slate-900/5 flex items-center justify-center p-1">
               <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
-              Boardroom<span className="gradient-text"> AI</span>
+            <div className="w-px h-6 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
+            <span className="text-xl font-extrabold tracking-tight -ml-1">
+              <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>
             </span>
           </div>
           {onClose && (

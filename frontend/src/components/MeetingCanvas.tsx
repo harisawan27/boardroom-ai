@@ -65,7 +65,7 @@ export default function MeetingCanvas({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/50 dark:bg-white/5 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 flex items-center justify-center p-1">
+            <div className="w-8 h-8 rounded-lg bg-white shadow-md ring-1 ring-slate-900/5 flex items-center justify-center p-1.5">
               <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>

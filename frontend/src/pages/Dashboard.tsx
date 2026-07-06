@@ -253,9 +253,12 @@ export default function Dashboard() {
             <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <img src="/logo-icon.svg" alt="Boardroom AI Logo" className="w-6 h-6" />
-              <span className="font-bold text-slate-900 dark:text-white">Boardroom AI</span>
+              <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
+              <span className="text-lg font-extrabold tracking-tight">
+                <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>
+              </span>
             </div>
           </div>
         </nav>
@@ -264,7 +267,7 @@ export default function Dashboard() {
           <div className="max-w-3xl mx-auto space-y-6 pb-40">
             {messages.length === 0 && (
               <div className="text-center mt-20 animate-fade-in px-4">
-                <div className="inline-flex w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 items-center justify-center mb-6 shadow-xl p-3">
+                <div className="inline-flex w-16 h-16 rounded-2xl bg-white shadow-xl ring-1 ring-slate-900/5 items-center justify-center mb-6 p-3">
                   <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-full h-full object-contain drop-shadow-sm" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome to your Workspace</h2>
@@ -307,7 +310,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="max-w-[85%] flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center flex-shrink-0 shadow-sm p-1.5">
+                    <div className="w-8 h-8 rounded-full bg-white shadow-sm ring-1 ring-slate-900/5 flex items-center justify-center flex-shrink-0 p-1.5">
                       <img src="/boardroom-ai.svg" alt="Avatar" className="w-full h-full object-contain" />
                     </div>
                     <div>

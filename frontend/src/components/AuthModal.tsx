@@ -55,11 +55,14 @@ export default function AuthModal() {
       {/* Auth Card */}
       <div className="relative glass-elevated rounded-3xl w-full max-w-md p-8 shadow-2xl animate-scale-in">
         <div className="text-center mb-8">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 items-center justify-center mb-4 shadow-lg p-3">
+          <div className="inline-flex w-16 h-16 rounded-2xl bg-white shadow-xl ring-1 ring-slate-900/5 items-center justify-center mb-4 p-3">
             <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-            Welcome to Boardroom<span className="gradient-text"> AI</span>
+          <h2 className="text-2xl mb-2">
+            <span className="font-bold text-slate-900 dark:text-white">Welcome to </span>
+            <span className="font-extrabold tracking-tight text-[1.1em]">
+              <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>
+            </span>
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {isLogin ? "Sign in to access your executive board." : "Create an account to build your board."}
