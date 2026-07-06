@@ -15,6 +15,9 @@ import json
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
+# Load environment variables from .env (never hardcode API keys)
+load_dotenv()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -44,11 +47,6 @@ import datetime
 from sqlalchemy.orm import selectinload
 from google import genai
 import google.genai.types as genai_types
-
-# ---------------------------------------------------------------------------
-# Load environment variables from .env (never hardcode API keys)
-# ---------------------------------------------------------------------------
-load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Logging
