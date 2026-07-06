@@ -19,18 +19,17 @@ from templates.board_templates import TemplateType
 # Model Pool — Distributed for rate limit optimization
 # ---------------------------------------------------------------------------
 # Free tier limits (per model, per minute):
-#   gemma-4-31b-it:          15 RPM, unlimited TPM, 1500 RPD
-#   gemma-4-26b-a4b-it:      15 RPM, unlimited TPM, 1500 RPD
-#   gemini-3.1-flash-lite:   15 RPM, 250K TPM, 500 RPD
+#   gemma-4-31b-it:           15 RPM, 1500 RPD
+#   gemini-2.0-flash-lite:    30 RPM, 250K TPM, 1500 RPD
+#   gemini-3.1-flash-lite:    15 RPM, 250K TPM, 500 RPD
 #
-# Strategy: 3 agents on 31B, 3 agents on 26B, moderator on flash-lite
-# = 5 msg/min, 500 msg/day (all models balanced)
+# Strategy: 3 agents on gemma-31b, 3 agents on gemini-2.0-flash-lite
 # ---------------------------------------------------------------------------
-MODEL_A = "gemma-4-31b-it"        # Slots: 3 specialists
-MODEL_B = "gemma-4-26b-a4b-it"    # Slots: 3 specialists
-MODEL_MOD = "gemini-3.1-flash-lite"  # Slot: moderator only
+MODEL_A = "gemma-4-31b-it"              # Slots: 3 specialists
+MODEL_B = "gemini-2.0-flash-lite"        # Slots: 3 specialists (replaces unreliable 26b)
+MODEL_MOD = "gemini-2.0-flash-lite"      # Slot: moderator
 
-# Token budgets — Gemma has unlimited TPM so we can be generous
+# Token budgets
 SPECIALIST_TOKENS = 1024
 MODERATOR_TOKENS = 4096
 

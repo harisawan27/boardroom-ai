@@ -292,6 +292,15 @@ export default function Dashboard() {
         },
         (err) => {
           console.error("Board error:", err);
+          // Mark all in-progress agents as done so canvas stops spinning
+          setActiveMeetingData(prev => {
+            if (!prev || !prev.streams) return prev;
+            const frozen: typeof prev.streams = {};
+            for (const key of Object.keys(prev.streams)) {
+              frozen[key] = { ...prev.streams![key], status: "done" };
+            }
+            return { ...prev, streams: frozen };
+          });
           setIsProcessing(false);
           if (sessionId) loadSession(sessionId as string);
         },
@@ -604,8 +613,20 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 pr-1">
                   {isProcessing ? (
                     <button
-                      onClick={() => abortControllerRef.current?.abort()}
-                      className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 transition-colors shadow-sm"
+                      onClick={() => {
+                        abortControllerRef.current?.abort();
+                        // Freeze all in-progress agents in the canvas immediately
+                        setActiveMeetingData(prev => {
+                          if (!prev || !prev.streams) return prev;
+                          const frozen: typeof prev.streams = {};
+                          for (const key of Object.keys(prev.streams)) {
+                            frozen[key] = { ...prev.streams![key], status: "done" };
+                          }
+                          return { ...prev, streams: frozen };
+                        });
+                        setIsProcessing(false);
+                      }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-red-100 hover:bg-red-200 dark:bg-red-500/20 dark:hover:bg-red-500/30 text-red-600 dark:text-red-400 transition-colors shadow-sm"
                       title="Stop Generation"
                     >
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
