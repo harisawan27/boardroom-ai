@@ -457,8 +457,10 @@ async def stream_standard_message(
 
     async def event_generator():
         client = genai.Client()
+        full_text = ""
+        full_thinking = ""
         try:
-            response_stream = client.models.generate_content_stream(
+            response_stream = await client.aio.models.generate_content_stream(
                 model='gemini-3.1-flash-lite',
                 contents=contents,
                 config=genai_types.GenerateContentConfig(
@@ -469,10 +471,11 @@ async def stream_standard_message(
             
             from agents import AgentStreamParser
             parser = AgentStreamParser()
-            full_text = ""
-            full_thinking = ""
             
-            for chunk in response_stream:
+            async for chunk in response_stream:
+                if await request.is_disconnected():
+                    logger.info("Client disconnected, stopping standard stream.")
+                    break
                 if chunk.text:
                     for is_thinking, parsed_content in parser.process_chunk(chunk.text):
                         if is_thinking:
@@ -482,7 +485,7 @@ async def stream_standard_message(
                             full_text += parsed_content
                             yield {"data": json.dumps({"type": "chunk", "text": parsed_content})}
             
-            if parser.buffer:
+            if parser.buffer and not await request.is_disconnected():
                 if parser.is_thinking:
                     full_thinking += parser.buffer
                     yield {"data": json.dumps({"type": "thinking", "text": parser.buffer})}
@@ -599,11 +602,13 @@ async def chat_stream(
     final_prompt = f"{context_str}\nTask:\n{body.prompt}"
 
     async def event_generator():
+        final_report_data = None
+        streams_accumulator = {"_roles": []}
         try:
-            final_report_data = None
-            streams_accumulator = {"_roles": []}
-            
             async for chunk in run_meeting(meeting_id, template_type, {"prompt": final_prompt, "decision_title": "Chat Session"}):
+                if await request.is_disconnected():
+                    logger.info(f"Client disconnected, stopping board stream for meeting {meeting_id}.")
+                    break
                 yield {"data": chunk}
                 try:
                     data = json.loads(chunk)
@@ -627,8 +632,8 @@ async def chat_stream(
             logger.error(f"Stream error: {e}", exc_info=True)
             yield {"data": json.dumps({"type": "error", "message": str(e)})}
         finally:
-            # After stream completes, save the report_data to DB
-            if final_report_data or streams_accumulator:
+            # Save whatever was accumulated (even on disconnect)
+            if final_report_data or len(streams_accumulator) > 1:
                 async def save_meeting():
                     async with AsyncSessionLocal() as session_db:
                         result = await session_db.execute(select(Meeting).filter(Meeting.id == meeting_id))
@@ -640,6 +645,7 @@ async def chat_stream(
                             await session_db.commit()
                 import asyncio
                 asyncio.create_task(save_meeting())
+            logger.info(f"Board stream event_generator finished for meeting {meeting_id}.")
 
     return EventSourceResponse(event_generator())
 
