@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { streamChat, getSession, createSession, streamStandardMessage, deleteLastTurn, type RoleInfo } from "../api/client";
+import { streamChat, getSession, createSession, streamStandardMessage, deleteLastTurn } from "../api/client";
+import type { RoleInfo } from "../api/client";
 import MeetingCanvas from "../components/MeetingCanvas";
 import AuthModal from "../components/AuthModal";
 import Sidebar from "../components/Sidebar";
