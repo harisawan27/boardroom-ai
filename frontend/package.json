@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "description": "Boardroom AI Frontend",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
