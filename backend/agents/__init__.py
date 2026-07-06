@@ -123,14 +123,19 @@ async def run_meeting(
     meeting_id: str,
     template_type: TemplateType,
     fields: Dict[str, Any],
+    cancel_event: "asyncio.Event | None" = None,
 ):
     """
     Run a full board meeting as an async generator yielding JSON strings for SSE.
+    Accepts an optional cancel_event to stop all agent tasks immediately.
     """
     import asyncio
     from google import genai
     import google.genai.types as genai_types
     client = genai.Client()
+    
+    if cancel_event is None:
+        cancel_event = asyncio.Event()
     
     template_key = template_type.value
     prompt = fields.get("prompt", "")
@@ -175,6 +180,9 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
     async def stream_agent(agent_config, user_msg, q):
         max_retries = 3
         for attempt in range(max_retries):
+            if cancel_event.is_set():
+                await q.put({"type": "done", "agent": agent_config["key"], "full_text": ""})
+                return
             try:
                 if attempt > 0:
                     import random
@@ -198,6 +206,8 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                     emitted_main_text = False
                     
                     async for chunk in response_stream:
+                        if cancel_event.is_set():
+                            break
                         if chunk.text:
                             full_text += chunk.text
                             for is_thinking, content in parser.process_chunk(chunk.text):
@@ -209,7 +219,7 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                                     "text": content
                                 })
                                 
-                    if parser.buffer:
+                    if parser.buffer and not cancel_event.is_set():
                         if not parser.is_thinking and parser.buffer.strip():
                             emitted_main_text = True
                         await q.put({
@@ -218,7 +228,7 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                             "text": parser.buffer
                         })
                     
-                    if not emitted_main_text and full_text.strip():
+                    if not emitted_main_text and full_text.strip() and not cancel_event.is_set():
                         await q.put({
                             "type": "chunk",
                             "agent": agent_config["key"],
@@ -236,7 +246,7 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                 logger.warning(f"Error in {agent_config['key']} (attempt {attempt+1}/{max_retries}): {e}")
                 if attempt == max_retries - 1:
                     logger.error(f"Final error in {agent_config['key']}: {e}")
-                    err_msg = f"\n\n*[System: Error connecting to model. Failed to generate response after {max_retries} attempts.]*\nError detail: {e}"
+                    err_msg = f"\n\n*[System: Error connecting to model after {max_retries} attempts.]*\nError: {e}"
                     await q.put({"type": "chunk", "agent": agent_config["key"], "text": err_msg})
                     await q.put({"type": "done", "agent": agent_config["key"], "full_text": err_msg})
 
@@ -251,6 +261,8 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
         current_context = user_message
         
         for i in range(0, len(roles), batch_size):
+            if cancel_event.is_set():
+                break
             batch = roles[i:i+batch_size]
             
             # Send waiting status for future batches
@@ -279,7 +291,7 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
             
             # Build context for next batch using accumulated specialist_texts
             # Note: specialist_texts is populated by the consumer loop below
-            if i + batch_size < len(roles):
+            if i + batch_size < len(roles) and not cancel_event.is_set():
                 current_context += "\n\n### Previous Board Member Analyses:\n"
                 for role in batch:
                     # Wait briefly to ensure the consumer loop processed the 'done' event
@@ -287,23 +299,39 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                     current_context += f"**{role['title']}**: {specialist_texts.get(role['key'], 'No analysis provided.')}\n\n"
                 current_context += "Please critically review the above analyses and build upon them in your own assessment."
 
-    asyncio.create_task(orchestrator())
+    orch_task = asyncio.create_task(orchestrator())
     specialist_texts = {}
     
-    while completed_specialists < len(config["roles"]):
-        event = await queue.get()
-        if event["type"] == "done":
-            completed_specialists += 1
-            specialist_texts[event["agent"]] = event["full_text"]
-        else:
-            yield json.dumps({
-                "type": event["type"],
-                "agent": event.get("agent"),
-                "text": event.get("text", ""),
-                "status": event.get("status"),
-                "message": event.get("message")
-            })
-            
+    try:
+        while completed_specialists < len(config["roles"]):
+            if cancel_event.is_set():
+                logger.info(f"Cancel event set, stopping consumer loop for meeting {meeting_id}.")
+                break
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=120.0)
+            except asyncio.TimeoutError:
+                logger.warning(f"Queue timeout for meeting {meeting_id}, cancelling.")
+                cancel_event.set()
+                break
+            if event["type"] == "done":
+                completed_specialists += 1
+                specialist_texts[event["agent"]] = event["full_text"]
+            else:
+                yield json.dumps({
+                    "type": event["type"],
+                    "agent": event.get("agent"),
+                    "text": event.get("text", ""),
+                    "status": event.get("status"),
+                    "message": event.get("message")
+                })
+    finally:
+        if not orch_task.done():
+            orch_task.cancel()
+
+    if cancel_event.is_set():
+        logger.info(f"Meeting {meeting_id} was cancelled before completing.")
+        return
+
     # Now run Moderator
     moderator_config = config["moderator"]
     moderator_prompt = "Specialist Analyses:\n\n"
@@ -327,6 +355,8 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
         )
         
         async for chunk in mod_stream:
+            if cancel_event.is_set():
+                break
             if chunk.text:
                 mod_full_text += chunk.text
                 for is_thinking, content in mod_parser.process_chunk(chunk.text):
@@ -336,7 +366,7 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
                         "text": content,
                     })
                     
-        if mod_parser.buffer:
+        if mod_parser.buffer and not cancel_event.is_set():
             yield json.dumps({
                 "type": "thinking" if mod_parser.is_thinking else "chunk",
                 "agent": moderator_config["key"],
@@ -357,6 +387,7 @@ Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclos
     )
 
     yield json.dumps({"type": "report", "data": report})
+
 
 
 def _agent_name_to_key(agent_name: str, config: dict) -> str:

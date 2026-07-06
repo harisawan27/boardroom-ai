@@ -293,6 +293,7 @@ export default function Dashboard() {
         (err) => {
           console.error("Board error:", err);
           setIsProcessing(false);
+          if (sessionId) loadSession(sessionId as string);
         },
         () => {
           setIsProcessing(false);

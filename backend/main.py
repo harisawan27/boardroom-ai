@@ -602,12 +602,15 @@ async def chat_stream(
     final_prompt = f"{context_str}\nTask:\n{body.prompt}"
 
     async def event_generator():
+        import asyncio as _asyncio
+        cancel_event = _asyncio.Event()
         final_report_data = None
         streams_accumulator = {"_roles": []}
         try:
-            async for chunk in run_meeting(meeting_id, template_type, {"prompt": final_prompt, "decision_title": "Chat Session"}):
+            async for chunk in run_meeting(meeting_id, template_type, {"prompt": final_prompt, "decision_title": "Chat Session"}, cancel_event=cancel_event):
                 if await request.is_disconnected():
-                    logger.info(f"Client disconnected, stopping board stream for meeting {meeting_id}.")
+                    logger.info(f"Client disconnected, cancelling board stream for meeting {meeting_id}.")
+                    cancel_event.set()
                     break
                 yield {"data": chunk}
                 try:
