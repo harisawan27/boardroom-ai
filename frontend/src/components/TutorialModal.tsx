@@ -20,7 +20,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
       title: "Welcome to Boardroom AI",
       description: "Your personal Chief of Staff and Executive Board in one place. Make better decisions with AI-driven perspectives.",
       icon: "🏛️",
-      color: "from-indigo-500 to-purple-600",
+      color: "from-blue-600 to-blue-800",
     },
     {
       title: "Brainstorm with Chief of Staff",
@@ -32,7 +32,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
       title: "Convene the Board",
       description: "For major decisions, toggle the 'Convene Board' switch. We'll summon specialized agents (like a CFO or CMO) to debate your problem from all angles.",
       icon: "⚖️",
-      color: "from-blue-500 to-indigo-600",
+      color: "from-blue-500 to-blue-700",
     },
     {
       title: "Review the Board Report",
@@ -72,7 +72,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
           {slides.map((_, i) => (
             <div 
               key={i} 
-              className={`h-full flex-1 transition-all duration-500 ${i <= currentSlide ? 'bg-indigo-500' : 'bg-transparent'}`}
+              className={`h-full flex-1 transition-all duration-500 ${i <= currentSlide ? 'bg-blue-500' : 'bg-transparent'}`}
             />
           ))}
         </div>
@@ -99,7 +99,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                 'opacity-0 translate-x-12 pointer-events-none'
               }`}
             >
-              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br ${slide.color} flex items-center justify-center text-4xl sm:text-5xl shadow-xl shadow-indigo-500/20 mb-8 animate-bounce-slight`}>
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br ${slide.color} flex items-center justify-center text-4xl sm:text-5xl shadow-xl shadow-blue-500/20 mb-8 animate-bounce-slight`}>
                 {slide.icon}
               </div>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
@@ -131,7 +131,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
             {slides.map((_, i) => (
               <div 
                 key={i} 
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${i === currentSlide ? 'bg-indigo-500 w-4' : 'bg-slate-300 dark:bg-slate-600'}`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${i === currentSlide ? 'bg-blue-500 w-4' : 'bg-slate-300 dark:bg-slate-600'}`}
               />
             ))}
           </div>

@@ -9,7 +9,7 @@ export default function ThemeToggle() {
         onClick={() => setTheme('light')}
         className={`p-1.5 rounded-lg transition-all ${
           theme === 'light'
-            ? 'bg-white text-indigo-600 shadow-sm'
+            ? 'bg-white text-blue-600 shadow-sm'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white'
         }`}
         title="Light Mode"
@@ -30,7 +30,7 @@ export default function ThemeToggle() {
         onClick={() => setTheme('dark')}
         className={`p-1.5 rounded-lg transition-all ${
           theme === 'dark'
-            ? 'bg-indigo-500/20 text-indigo-400 dark:bg-slate-800 dark:text-white shadow-sm'
+            ? 'bg-blue-500/20 text-blue-400 dark:bg-slate-800 dark:text-white shadow-sm'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white'
         }`}
         title="Dark Mode"
@@ -43,7 +43,7 @@ export default function ThemeToggle() {
         onClick={() => setTheme('system')}
         className={`p-1.5 rounded-lg transition-all ${
           theme === 'system'
-            ? 'bg-white text-indigo-600 dark:bg-slate-800 dark:text-white shadow-sm'
+            ? 'bg-white text-blue-600 dark:bg-slate-800 dark:text-white shadow-sm'
             : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white'
         }`}
         title="System Preference"

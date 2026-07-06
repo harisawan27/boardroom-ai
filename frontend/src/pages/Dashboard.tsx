@@ -253,7 +253,10 @@ export default function Dashboard() {
             <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
-            <span className="font-bold text-slate-900 dark:text-white">Boardroom AI</span>
+            <div className="flex items-center gap-2">
+              <img src="/logo-icon.svg" alt="Boardroom AI Logo" className="w-6 h-6" />
+              <span className="font-bold text-slate-900 dark:text-white">Boardroom AI</span>
+            </div>
           </div>
         </nav>
 
@@ -261,7 +264,9 @@ export default function Dashboard() {
           <div className="max-w-3xl mx-auto space-y-6 pb-40">
             {messages.length === 0 && (
               <div className="text-center mt-20 animate-fade-in px-4">
-                <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-600/20 border border-indigo-500/30 items-center justify-center text-3xl mb-6 shadow-xl shadow-indigo-500/10">🏛️</div>
+                <div className="inline-flex w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 items-center justify-center mb-6 shadow-xl p-3">
+                  <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-full h-full object-contain drop-shadow-sm" />
+                </div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome to your Workspace</h2>
                 <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto text-sm sm:text-base">
                   Brainstorm with your Chief of Staff, and when you're ready, convene the full executive board to analyze your decision.
@@ -270,9 +275,9 @@ export default function Dashboard() {
                 {!hasSeenTutorial && (
                   <button 
                     onClick={() => setIsTutorialOpen(true)}
-                    className="mb-8 mx-auto flex items-center gap-3 px-6 py-3 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-500/20 transition-all group font-medium"
+                    className="mb-8 mx-auto flex items-center gap-3 px-6 py-3 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 border border-blue-500/20 transition-all group font-medium"
                   >
-                    <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+                    <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/30 group-hover:scale-110 transition-transform">
                       <svg className="w-4 h-4 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -284,7 +289,7 @@ export default function Dashboard() {
 
                 <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
                   {["Should we raise a Series A now?", "Fire underperforming contractor?", "Pivot target audience to Enterprise?"].map((q, i) => (
-                    <button key={i} onClick={() => setInput(q)} className="px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500/50 hover:bg-indigo-500/10 transition-all shadow-sm dark:shadow-none bg-white dark:bg-transparent">
+                    <button key={i} onClick={() => setInput(q)} className="px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-blue-500/50 hover:bg-blue-500/10 transition-all shadow-sm dark:shadow-none bg-white dark:bg-transparent">
                       "{q}"
                     </button>
                   ))}
@@ -296,14 +301,14 @@ export default function Dashboard() {
               <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}>
                 {msg.role === "user" ? (
                   <div className="max-w-[85%]">
-                    <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-lg text-sm leading-relaxed whitespace-pre-wrap">
+                    <div className="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-lg text-sm leading-relaxed whitespace-pre-wrap">
                       {msg.content}
                     </div>
                   </div>
                 ) : (
                   <div className="max-w-[85%] flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center flex-shrink-0 text-xs shadow-sm">
-                      {msg.is_agentic ? "🏛️" : "💼"}
+                    <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center flex-shrink-0 shadow-sm p-1.5">
+                      <img src="/boardroom-ai.svg" alt="Avatar" className="w-full h-full object-contain" />
                     </div>
                     <div>
                       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-sm text-sm leading-relaxed whitespace-pre-wrap">
@@ -312,7 +317,7 @@ export default function Dashboard() {
                       {msg.is_agentic && msg.meeting && (
                         <button 
                           onClick={() => openPastMeeting(msg.meeting)}
-                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20 rounded-xl text-sm font-medium transition-colors"
+                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 rounded-xl text-sm font-medium transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                           Open Board Report
@@ -330,7 +335,7 @@ export default function Dashboard() {
         {/* Input Command Center */}
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-50 via-slate-50/90 dark:from-[#06080f] dark:via-[#06080f]/90 to-transparent z-20 pointer-events-none">
           <div className="max-w-3xl mx-auto relative pointer-events-auto">
-            <div className={`bg-white dark:bg-slate-900/90 backdrop-blur-md border rounded-2xl shadow-lg dark:shadow-none overflow-visible transition-all ${isConveneBoardSelected ? 'border-indigo-500/50 shadow-indigo-500/10 ring-1 ring-indigo-500/20' : 'border-slate-200 dark:border-white/10 focus-within:ring-2 focus-within:ring-indigo-500/50'}`}>
+            <div className={`bg-white dark:bg-slate-900/90 backdrop-blur-md border rounded-2xl shadow-lg dark:shadow-none overflow-visible transition-all ${isConveneBoardSelected ? 'border-blue-500/50 shadow-blue-500/10 ring-1 ring-blue-500/20' : 'border-slate-200 dark:border-white/10 focus-within:ring-2 focus-within:ring-blue-500/50'}`}>
               
               <textarea
                 value={input}
@@ -372,7 +377,7 @@ export default function Dashboard() {
                                 setSelectedTemplate(key);
                                 setIsDropdownOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-3 text-sm transition-colors ${selectedTemplate === key ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                              className={`w-full text-left px-4 py-3 text-sm transition-colors ${selectedTemplate === key ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                             >
                               <div className="font-medium">{TEMPLATES[key as keyof typeof TEMPLATES].name}</div>
                               <div className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{TEMPLATES[key as keyof typeof TEMPLATES].description}</div>
@@ -386,7 +391,7 @@ export default function Dashboard() {
                   {/* Convene Toggle */}
                   <button
                     onClick={() => setIsConveneBoardSelected(!isConveneBoardSelected)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isConveneBoardSelected ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 ring-1 ring-indigo-500/50' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isConveneBoardSelected ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 ring-1 ring-blue-500/50' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
@@ -403,8 +408,8 @@ export default function Dashboard() {
                       !input.trim() || isProcessing
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                         : isConveneBoardSelected
-                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:scale-105 shadow-indigo-500/20'
-                        : 'bg-indigo-500 text-white hover:scale-105 hover:bg-indigo-600'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:scale-105 shadow-blue-500/20'
+                        : 'bg-blue-500 text-white hover:scale-105 hover:bg-blue-600'
                     }`}
                   >
                     {isProcessing && isCanvasOpen ? (

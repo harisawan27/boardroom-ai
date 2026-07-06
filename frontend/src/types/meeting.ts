@@ -103,7 +103,7 @@ export const AGENT_INFO: Record<string, AgentInfo> = {
     role: "Planner",
     title: "Meeting Planner",
     icon: "📋",
-    color: "from-slate-500 to-slate-700",
+    color: "from-slate-100 to-slate-200",
   },
   CEO: {
     role: "CEO",
@@ -121,7 +121,7 @@ export const AGENT_INFO: Record<string, AgentInfo> = {
     role: "CTO",
     title: "Chief Technology Officer",
     icon: "⚙️",
-    color: "from-purple-500 to-purple-700",
+    color: "from-blue-500 to-blue-700",
   },
   CMO: {
     role: "CMO",
@@ -145,7 +145,7 @@ export const AGENT_INFO: Record<string, AgentInfo> = {
     role: "Moderator",
     title: "Board Moderator",
     icon: "⚖️",
-    color: "from-indigo-500 to-indigo-700",
+    color: "from-blue-500 to-blue-700",
   },
 };
 
@@ -159,7 +159,7 @@ export const TEMPLATES: Record<TemplateType, TemplateMetadata> = {
     name: "Startup Board",
     description: "For founders making company-level strategic decisions",
     icon: "🚀",
-    accentColor: "indigo",
+    accentColor: "blue",
     exampleDecision: "Should we pivot from B2C to B2B SaaS?",
     fields: [
       { key: "company_name", label: "Company Name", type: "text", required: true, placeholder: "e.g. Acme Inc." },

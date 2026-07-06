@@ -55,8 +55,8 @@ export default function AuthModal() {
       {/* Auth Card */}
       <div className="relative glass-elevated rounded-3xl w-full max-w-md p-8 shadow-2xl animate-scale-in">
         <div className="text-center mb-8">
-          <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center text-white font-bold text-2xl mb-4 shadow-lg shadow-indigo-500/20">
-            B
+          <div className="inline-flex w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 items-center justify-center mb-4 shadow-lg p-3">
+            <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
             Welcome to Boardroom<span className="gradient-text"> AI</span>
@@ -79,7 +79,7 @@ export default function AuthModal() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
+              className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
               placeholder="ceo@startup.com"
               required
             />
@@ -92,7 +92,7 @@ export default function AuthModal() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-12 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
+                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl pl-4 pr-12 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
                 placeholder="••••••••"
                 required
               />
@@ -142,7 +142,7 @@ export default function AuthModal() {
           <button
             type="submit"
             disabled={loading || !email || !password || (!isLogin && !isPasswordValid)}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-3 rounded-xl shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center h-[52px]"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-500 text-white font-medium py-3 rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center h-[52px]"
           >
             {loading ? (
               <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">

@@ -12,7 +12,7 @@ interface MeetingFormProps {
 }
 
 const accentButton: Record<string, string> = {
-  indigo: "from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 shadow-indigo-500/20",
+  blue: "from-blue-600 to-blue-600 hover:from-blue-500 hover:to-blue-400 shadow-blue-500/20",
   emerald: "from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-emerald-500/20",
   amber: "from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-amber-500/20",
   sky: "from-sky-600 to-sky-500 hover:from-sky-500 hover:to-sky-400 shadow-sky-500/20",
@@ -22,7 +22,7 @@ const accentButton: Record<string, string> = {
 export default function MeetingForm({ metadata, onSubmit, isLoading }: MeetingFormProps) {
   const [formData, setFormData] = useState<Record<string, string | number>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const btnClass = accentButton[metadata.accentColor] || accentButton.indigo;
+  const btnClass = accentButton[metadata.accentColor] || accentButton.blue;
 
   const handleChange = (key: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [key]: value }));

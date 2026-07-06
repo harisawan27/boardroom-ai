@@ -22,7 +22,7 @@ const ROLES_INFO: Record<string, any> = {
   STARTUP_BOARD: [
     { key: "CEO", title: "Chief Executive Officer", icon: "🚀", color: "from-blue-500 to-cyan-500" },
     { key: "CFO", title: "Chief Financial Officer", icon: "💰", color: "from-emerald-500 to-teal-500" },
-    { key: "CTO", title: "Chief Technology Officer", icon: "💻", color: "from-indigo-500 to-violet-500" },
+    { key: "CTO", title: "Chief Technology Officer", icon: "💻", color: "from-blue-500 to-blue-700" },
     { key: "CMO", title: "Chief Marketing Officer", icon: "📢", color: "from-pink-500 to-rose-500" },
     { key: "Legal", title: "General Counsel", icon: "⚖️", color: "from-slate-500 to-gray-500" },
     { key: "Moderator", title: "Board Chair", icon: "🏛️", color: "from-amber-500 to-orange-500" },
@@ -30,7 +30,7 @@ const ROLES_INFO: Record<string, any> = {
   CORPORATE_BOARD: [
     { key: "CEO", title: "Chief Executive Officer", icon: "👔", color: "from-blue-500 to-cyan-500" },
     { key: "CFO", title: "Chief Financial Officer", icon: "📊", color: "from-emerald-500 to-teal-500" },
-    { key: "COO", title: "Chief Operating Officer", icon: "⚙️", color: "from-indigo-500 to-violet-500" },
+    { key: "COO", title: "Chief Operating Officer", icon: "⚙️", color: "from-blue-500 to-blue-700" },
     { key: "CRO", title: "Chief Risk Officer", icon: "🛡️", color: "from-pink-500 to-rose-500" },
     { key: "Legal", title: "General Counsel", icon: "⚖️", color: "from-slate-500 to-gray-500" },
     { key: "Moderator", title: "Board Chair", icon: "🏛️", color: "from-amber-500 to-orange-500" },
@@ -65,8 +65,8 @@ export default function MeetingCanvas({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/50 dark:bg-white/5 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm">
-              🏛️
+            <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 flex items-center justify-center p-1">
+              <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Board Meeting</h2>
@@ -98,7 +98,7 @@ export default function MeetingCanvas({
 
               <div className="mt-6 glass-elevated rounded-2xl p-4 sm:p-6">
                 <h3 className="text-xs font-semibold text-slate-500 dark:text-slate-600 uppercase tracking-widest mb-4">Board Consensus</h3>
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed border-l-2 border-indigo-500/30 pl-4 whitespace-pre-wrap">
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed border-l-2 border-blue-500/30 pl-4 whitespace-pre-wrap">
                   {report.debate_summary}
                 </p>
               </div>

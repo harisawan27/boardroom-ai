@@ -12,11 +12,11 @@ interface TemplateCardProps {
 }
 
 const accentMap: Record<string, { border: string; glow: string; bg: string; text: string }> = {
-  indigo: {
-    border: "group-hover:border-indigo-500/30",
+  blue: {
+    border: "group-hover:border-blue-500/30",
     glow: "group-hover:shadow-[0_0_40px_rgba(99,102,241,0.08)]",
-    bg: "bg-indigo-500/10",
-    text: "text-indigo-400",
+    bg: "bg-blue-500/10",
+    text: "text-blue-400",
   },
   emerald: {
     border: "group-hover:border-emerald-500/30",
@@ -46,7 +46,7 @@ const accentMap: Record<string, { border: string; glow: string; bg: string; text
 
 export default function TemplateCard({ templateType, metadata, index }: TemplateCardProps) {
   const navigate = useNavigate();
-  const accent = accentMap[metadata.accentColor] || accentMap.indigo;
+  const accent = accentMap[metadata.accentColor] || accentMap.blue;
 
   return (
     <button

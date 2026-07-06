@@ -110,8 +110,8 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         {/* Header */}
         <div className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-              B
+            <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-lg p-1">
+              <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <span className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
               Boardroom<span className="gradient-text"> AI</span>
@@ -150,7 +150,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         </div>
         {loading ? (
           <div className="flex justify-center p-4">
-            <div className="w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
+            <div className="w-5 h-5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
           </div>
         ) : sessions.length === 0 ? (
           <div className="text-center p-4 text-xs text-slate-500">
@@ -169,7 +169,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 pr-16 ${
                     selectedSessionId === s.id
-                      ? "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20"
+                      ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20"
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
                   }`}
                 >
@@ -185,7 +185,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
                         onChange={(e) => setEditTitle(e.target.value)}
                         onBlur={() => handleRenameSubmit(s.id)}
                         onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit(s.id)}
-                        className="w-full bg-white dark:bg-slate-900 border border-indigo-500 rounded px-2 py-0.5 text-sm text-slate-900 dark:text-white"
+                        className="w-full bg-white dark:bg-slate-900 border border-blue-500 rounded px-2 py-0.5 text-sm text-slate-900 dark:text-white"
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
@@ -201,7 +201,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
                 <div className="absolute right-2 flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => { setEditingId(s.id); setEditTitle(s.title); }}
-                    className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                    className="p-1.5 text-slate-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10"
                     title="Rename Chat"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -248,7 +248,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
                 onOpenTutorial();
                 if (onClose) onClose();
               }}
-              className="w-full flex items-center gap-3 md:gap-2 text-sm md:text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors py-2 md:py-1.5 px-3 md:px-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10 font-medium"
+              className="w-full flex items-center gap-3 md:gap-2 text-sm md:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-2 md:py-1.5 px-3 md:px-2 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-500/10 font-medium"
             >
               <svg className="w-5 h-5 md:w-4 md:h-4 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -280,7 +280,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
           }}
           className="w-full flex items-center gap-3 md:gap-2 text-sm md:text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors py-2 md:py-1.5 px-3 md:px-2 rounded-xl hover:bg-slate-200/50 dark:hover:bg-white/5"
         >
-          <div className="w-6 h-6 md:w-5 md:h-5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0 text-sm md:text-xs">
+          <div className="w-6 h-6 md:w-5 md:h-5 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 text-sm md:text-xs">
             {user?.profile_data?.name?.charAt(0) || "U"}
           </div>
           <div className="truncate text-left flex-1">

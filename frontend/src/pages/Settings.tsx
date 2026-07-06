@@ -136,7 +136,7 @@ export default function Settings() {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
+                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
                   placeholder="e.g. Elon Musk"
                 />
               </div>
@@ -148,7 +148,7 @@ export default function Settings() {
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
+                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
                   placeholder="e.g. CEO, Founder"
                 />
               </div>
@@ -162,7 +162,7 @@ export default function Settings() {
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
-                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
+                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
                   placeholder="e.g. SpaceX"
                 />
               </div>
@@ -174,7 +174,7 @@ export default function Settings() {
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
-                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
+                  className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-sm dark:shadow-none"
                   placeholder="e.g. Aerospace, SaaS"
                 />
               </div>
@@ -187,7 +187,7 @@ export default function Settings() {
                 value={formData.bio}
                 onChange={handleChange}
                 rows={4}
-                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all resize-none shadow-sm dark:shadow-none"
+                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all resize-none shadow-sm dark:shadow-none"
                 placeholder="What is your company trying to achieve? (e.g. We are building reusable rockets to make life multi-planetary)"
               />
             </div>
@@ -197,7 +197,7 @@ export default function Settings() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-8 rounded-xl shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 px-8 rounded-xl shadow-lg shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
             >
               {loading ? (
                 <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
