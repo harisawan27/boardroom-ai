@@ -56,16 +56,20 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
 
   const handleDeleteSession = async () => {
     if (!sessionToDelete) return;
+    const idToDelete = sessionToDelete.id;
+    // Optimistic UI update
+    removeSession(idToDelete);
+    if (selectedSessionId === idToDelete) {
+      onSelectSession(null);
+    }
+    setSessionToDelete(null); // Close modal immediately
+
     try {
-      await deleteSession(sessionToDelete.id);
-      removeSession(sessionToDelete.id);
-      if (selectedSessionId === sessionToDelete.id) {
-        onSelectSession(null);
-      }
+      await deleteSession(idToDelete);
     } catch (err) {
       console.error("Failed to delete session", err);
-    } finally {
-      setSessionToDelete(null);
+      // Fallback: fetch again if failed
+      fetchSessions();
     }
   };
 
@@ -74,13 +78,18 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
       setEditingId(null);
       return;
     }
+    const newTitle = editTitle;
+    setEditingId(null); // Close edit mode immediately
+
+    // Optimistic UI update
+    updateSessionTitle(id, newTitle);
+
     try {
-      await renameSession(id, editTitle);
-      updateSessionTitle(id, editTitle);
+      await renameSession(id, newTitle);
     } catch (err) {
       console.error("Failed to rename session", err);
-    } finally {
-      setEditingId(null);
+      // Fallback: fetch again if failed
+      fetchSessions();
     }
   };
 
@@ -108,7 +117,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)}></div>
       )}
       {/* Sidebar Container */}
-      <div className={`fixed md:relative inset-y-0 left-0 h-screen bg-slate-50/90 dark:bg-[#06080f]/90 backdrop-blur-xl flex flex-col flex-shrink-0 z-40 transition-all duration-300 ease-in-out overflow-hidden ${
+      <div className={`fixed md:relative inset-y-0 left-0 h-[100dvh] bg-slate-50/90 dark:bg-[#06080f]/90 backdrop-blur-xl flex flex-col flex-shrink-0 z-40 transition-all duration-300 ease-in-out overflow-hidden ${
         isOpen ? 'w-64 translate-x-0 border-r border-slate-200 dark:border-white/5' : 'w-0 -translate-x-full md:translate-x-0 border-r-0'
       }`}>
         <div className="w-64 h-full flex flex-col">

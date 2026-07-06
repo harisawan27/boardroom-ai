@@ -310,7 +310,7 @@ export default function Dashboard() {
   if (!token) return <AuthModal />;
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-slate-50 dark:bg-[#06080f] transition-colors">
+    <div className="h-[100dvh] flex relative overflow-hidden bg-slate-50 dark:bg-[#06080f] transition-colors">
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-[radial-gradient(ellipse,rgba(99,102,241,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(ellipse,rgba(99,102,241,0.05)_0%,transparent_70%)]" />
         <div className="absolute inset-0 dot-pattern opacity-60 dark:opacity-30" />

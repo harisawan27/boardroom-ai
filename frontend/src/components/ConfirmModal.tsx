@@ -21,17 +21,22 @@ export default function ConfirmModal({
   cancelText = "Cancel",
   isDestructive = true,
 }: ConfirmModalProps) {
+  const [isRendered, setIsRendered] = useState(isOpen);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setIsRendered(true);
       setIsAnimatingOut(false);
+    } else if (isRendered) {
+      setIsAnimatingOut(true);
+      const timer = setTimeout(() => setIsRendered(false), 200);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [isOpen, isRendered]);
 
   const handleClose = () => {
-    setIsAnimatingOut(true);
-    setTimeout(onClose, 200); // Wait for animation
+    onClose(); // Parent will set isOpen to false, triggering the useEffect
   };
 
   const handleConfirm = () => {
@@ -39,7 +44,7 @@ export default function ConfirmModal({
     handleClose();
   };
 
-  if (!isOpen && !isAnimatingOut) return null;
+  if (!isRendered) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
