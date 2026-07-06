@@ -318,11 +318,13 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col relative z-10 h-screen w-full md:w-auto">
         <nav className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between glass">
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            </button>
+            {!isSidebarOpen && (
+              <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+              </button>
+            )}
             <div className="flex items-center gap-2.5">
-              <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-6 h-6 object-contain" />
+              <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-6 h-6 object-contain dark:invert" />
               <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
               <span className="text-lg font-extrabold tracking-tight">
                 <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>

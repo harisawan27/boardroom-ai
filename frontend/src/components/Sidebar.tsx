@@ -115,18 +115,15 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         {/* Header */}
         <div className="p-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {onClose && (
+              <button onClick={onClose} className="p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+              </button>
+            )}
             <div className="w-8 h-8 rounded-lg bg-white shadow-md ring-1 ring-slate-900/5 flex items-center justify-center p-1">
-              <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain" />
+              <img src="/boardroom-ai.svg" alt="Logo" className="w-full h-full object-contain dark:invert" />
             </div>
           </div>
-          {onClose && (
-            <button onClick={onClose} className="md:hidden p-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          )}
         </div>
 
       {/* New Meeting Button */}
@@ -175,9 +172,6 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white border border-transparent"
                   }`}
                 >
-                  <div className="w-5 h-5 rounded bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 text-xs">
-                    🏛️
-                  </div>
                   <div className="truncate flex-1">
                     {editingId === s.id ? (
                       <input
