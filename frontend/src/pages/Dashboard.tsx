@@ -212,7 +212,11 @@ export default function Dashboard() {
       }
 
       const tempUserId = Date.now().toString();
-      setMessages(prev => [...prev, { id: tempUserId, role: "user", content: userText }]);
+      const tempAsstId = (Date.now() + 1).toString();
+      setMessages(prev => [...prev, 
+        { id: tempUserId, role: "user", content: userText },
+        { id: tempAsstId, role: "assistant", content: "", is_agentic: true }
+      ]);
 
       const newMeetingData: ActiveMeetingData = {
         template: selectedTemplate,
@@ -499,7 +503,7 @@ export default function Dashboard() {
                                 streams: streamsObj
                               });
                               setIsCanvasOpen(true);
-                            } else if (isProcessing && msg.id === messages[messages.length - 1].id) {
+                            } else if (activeMeetingData) {
                               setIsCanvasOpen(true);
                             }
                           }}

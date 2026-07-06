@@ -167,7 +167,7 @@ async def run_meeting(
 
 ---
 
-Analyze this thoroughly from your specific expertise. Show your thinking process, then provide a clear analysis with a VOTE and CONFIDENCE score.
+Analyze this thoroughly from your specific expertise. IMPORTANT: You MUST enclose your entire internal reasoning process inside <think> and </think> tags! After the </think> tag, provide your final clear analysis with a VOTE and CONFIDENCE score.
 """
 
     queue = asyncio.Queue()
@@ -195,11 +195,14 @@ Analyze this thoroughly from your specific expertise. Show your thinking process
                     
                     parser = AgentStreamParser()
                     full_text = ""
+                    emitted_main_text = False
                     
                     async for chunk in response_stream:
                         if chunk.text:
                             full_text += chunk.text
                             for is_thinking, content in parser.process_chunk(chunk.text):
+                                if not is_thinking and content.strip():
+                                    emitted_main_text = True
                                 await q.put({
                                     "type": "thinking" if is_thinking else "chunk",
                                     "agent": agent_config["key"],
@@ -207,11 +210,21 @@ Analyze this thoroughly from your specific expertise. Show your thinking process
                                 })
                                 
                     if parser.buffer:
+                        if not parser.is_thinking and parser.buffer.strip():
+                            emitted_main_text = True
                         await q.put({
                             "type": "thinking" if parser.is_thinking else "chunk",
                             "agent": agent_config["key"],
                             "text": parser.buffer
                         })
+                    
+                    if not emitted_main_text and full_text.strip():
+                        await q.put({
+                            "type": "chunk",
+                            "agent": agent_config["key"],
+                            "text": "\n\n### Analysis (Fallback)\n" + full_text
+                        })
+                        
                     return full_text
                 
                 # Enforce a strict 45-second timeout on the network call to prevent infinite socket hangs
