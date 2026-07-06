@@ -42,54 +42,75 @@ class AgentStreamParser:
     def process_chunk(self, chunk: str):
         self.buffer += chunk
         
+        start_markers = ["<think>", "<THINKING>", "**Reasoning:**", "Reasoning:", "**Thinking Process:**", "Thinking Process:"]
+        end_markers = ["</think>", "</THINKING>", "**Final Analysis:**", "Final Analysis:", "**Analysis:**", "Analysis:", "VOTE:", "VOTE:"]
+        
         while self.buffer:
             if not self.is_thinking:
-                # Also handle uppercase just in case Gemma still outputs it
-                idx = self.buffer.find("<think>")
-                if idx == -1: idx = self.buffer.find("<THINKING>")
+                best_idx = -1
+                best_len = 0
+                for m in start_markers:
+                    idx = self.buffer.find(m)
+                    if idx != -1 and (best_idx == -1 or idx < best_idx):
+                        best_idx = idx
+                        best_len = len(m)
                 
-                if idx != -1:
-                    tag_len = 7 if self.buffer[idx:idx+7] == "<think>" else 10
-                    before = self.buffer[:idx]
+                if best_idx != -1:
+                    before = self.buffer[:best_idx]
                     if before:
                         yield (False, before)
                     self.is_thinking = True
-                    self.buffer = self.buffer[idx + tag_len:]
+                    self.buffer = self.buffer[best_idx + best_len:]
                 else:
                     matched_partial = False
-                    for i in range(1, 10):
-                        if self.buffer.endswith("<think>"[:i]) or self.buffer.endswith("<THINKING>"[:i]):
-                            before = self.buffer[:-i]
-                            if before:
-                                yield (False, before)
-                            self.buffer = self.buffer[-i:]
-                            matched_partial = True
-                            break
+                    for m in start_markers:
+                        for i in range(1, len(m)):
+                            if self.buffer.endswith(m[:i]):
+                                before = self.buffer[:-i]
+                                if before:
+                                    yield (False, before)
+                                self.buffer = self.buffer[-i:]
+                                matched_partial = True
+                                break
+                        if matched_partial: break
                     if not matched_partial:
                         yield (False, self.buffer)
                         self.buffer = ""
                         
             else:
-                idx = self.buffer.find("</think>")
-                if idx == -1: idx = self.buffer.find("</THINKING>")
+                best_idx = -1
+                best_len = 0
+                matched_marker = ""
+                for m in end_markers:
+                    idx = self.buffer.find(m)
+                    if idx != -1 and (best_idx == -1 or idx < best_idx):
+                        best_idx = idx
+                        best_len = len(m)
+                        matched_marker = m
                 
-                if idx != -1:
-                    tag_len = 8 if self.buffer[idx:idx+8] == "</think>" else 11
-                    before = self.buffer[:idx]
+                if best_idx != -1:
+                    before = self.buffer[:best_idx]
                     if before:
                         yield (True, before)
                     self.is_thinking = False
-                    self.buffer = self.buffer[idx + tag_len:]
+                    
+                    # If the end marker isn't </think>, it's text that should be in the final response
+                    if not matched_marker.startswith("</"):
+                        self.buffer = self.buffer[best_idx:]
+                    else:
+                        self.buffer = self.buffer[best_idx + best_len:]
                 else:
                     matched_partial = False
-                    for i in range(1, 11):
-                        if self.buffer.endswith("</think>"[:i]) or self.buffer.endswith("</THINKING>"[:i]):
-                            before = self.buffer[:-i]
-                            if before:
-                                yield (True, before)
-                            self.buffer = self.buffer[-i:]
-                            matched_partial = True
-                            break
+                    for m in end_markers:
+                        for i in range(1, len(m)):
+                            if self.buffer.endswith(m[:i]):
+                                before = self.buffer[:-i]
+                                if before:
+                                    yield (True, before)
+                                self.buffer = self.buffer[-i:]
+                                matched_partial = True
+                                break
+                        if matched_partial: break
                     if not matched_partial:
                         yield (True, self.buffer)
                         self.buffer = ""

@@ -4,6 +4,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { RoleInfo } from "../api/client";
 
 interface AgentStreamProps {
@@ -11,9 +13,10 @@ interface AgentStreamProps {
   thinking: string;
   text: string;
   status: "idle" | "thinking" | "done" | "waiting";
+  voteData?: { vote: string; confidence: number };
 }
 
-export default function AgentStream({ role, thinking, text, status }: AgentStreamProps) {
+export default function AgentStream({ role, thinking, text, status, voteData }: AgentStreamProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isThinkingOpen, setIsThinkingOpen] = useState(false);
@@ -38,6 +41,13 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
   if (status === "idle") return null;
 
   const isThinking = status === "thinking";
+  
+  // Extract vote and confidence from live text, fallback to passed report data
+  const voteMatch = text.match(/VOTE:\s*(YES|NO|DEFER|APPROVE|REJECT)/i);
+  const confMatch = text.match(/CONFIDENCE:\s*(\d+)/i);
+  
+  const currentVote = voteData?.vote || (voteMatch ? voteMatch[1].toUpperCase() : null);
+  const currentConf = voteData?.confidence ?? (confMatch ? parseInt(confMatch[1], 10) : null);
 
   return (
     <div className={`glass-elevated rounded-xl border animate-slide-up overflow-hidden transition-all duration-300 ${
@@ -63,6 +73,32 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
         </div>
 
         <div className="flex items-center gap-4">
+          {currentVote && (
+            <div className="flex items-center gap-2 mr-2">
+              <span className={`text-[10px] px-2 py-0.5 rounded font-bold tracking-wider ${
+                currentVote === 'YES' || currentVote === 'APPROVE' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                currentVote === 'NO' || currentVote === 'REJECT' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
+                'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+              }`}>
+                {currentVote}
+              </span>
+              {currentConf !== null && (
+                <div className="flex items-center gap-1.5 opacity-80" title={`Confidence: ${currentConf}%`}>
+                  <div className="hidden sm:block w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        currentVote === 'YES' || currentVote === 'APPROVE' ? 'bg-emerald-500' :
+                        currentVote === 'NO' || currentVote === 'REJECT' ? 'bg-red-500' :
+                        'bg-amber-500'
+                      }`}
+                      style={{ width: `${currentConf}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-500">{currentConf}%</span>
+                </div>
+              )}
+            </div>
+          )}
           {status === "thinking" ? (
             <span className="flex items-center gap-2 text-xs text-blue-400">
               <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
@@ -134,9 +170,13 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
           {/* Main Analysis Text */}
           <div
             ref={scrollRef}
-            className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90 dark:opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2"
+            className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed opacity-90 dark:opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2 prose prose-sm prose-slate dark:prose-invert max-w-none"
           >
-            {text || (thinking ? "" : "Initializing analysis...")}
+            {text ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+            ) : (
+              thinking ? "" : "Initializing analysis..."
+            )}
             {isThinking && (
               <span className="inline-block animate-pulse font-bold text-blue-500 ml-0.5 relative -top-[1px]">|</span>
             )}

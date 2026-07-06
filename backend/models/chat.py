@@ -24,6 +24,7 @@ class ChatMessage(Base):
     session_id = Column(String, ForeignKey("chat_sessions.id"), nullable=False)
     role = Column(String, nullable=False) # "user", "assistant"
     content = Column(String, nullable=False)
+    thinking = Column(String, nullable=True)
     is_agentic = Column(Boolean, default=False)
     meeting_id = Column(String, ForeignKey("meetings.id", use_alter=True), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

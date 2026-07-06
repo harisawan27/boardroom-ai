@@ -254,26 +254,10 @@ export async function streamStandardMessage(
             if (!dataStr) continue;
             
             const data = JSON.parse(dataStr);
-            if (data.type === "chunk" && data.text) {
-              let textChunk = data.text;
-              
-              if (textChunk.includes("<think>")) {
-                isThinking = true;
-                const parts = textChunk.split("<think>");
-                if (parts[0]) onChunk(parts[0]);
-                textChunk = parts[1] || "";
-              }
-              
-              if (isThinking && textChunk.includes("</think>")) {
-                isThinking = false;
-                const parts = textChunk.split("</think>");
-                if (parts[0]) onThinking(parts[0]);
-                if (parts[1]) onChunk(parts[1]);
-              } else if (isThinking) {
-                onThinking(textChunk);
-              } else {
-                onChunk(textChunk);
-              }
+            if (data.type === "thinking" && data.text) {
+              onThinking(data.text);
+            } else if (data.type === "chunk" && data.text) {
+              onChunk(data.text);
             } else if (data.type === "error") {
               onError(data.message);
             } else if (data.type === "done") {

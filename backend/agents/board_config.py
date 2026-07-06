@@ -50,6 +50,7 @@ Example format:
 [Your brief, step-by-step reasoning here...]
 </think>
 
+**Final Analysis:**
 [Your final analysis here]
 VOTE: YES/NO/DEFER
 CONFIDENCE: [0-100]

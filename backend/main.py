@@ -142,13 +142,15 @@ class MeetingResponse(BaseModel):
     id: str
     template: str
     prompt: str
-    report_data: Optional[Dict[str, Any]]
+    report_data: Optional[Dict[str, Any]] = None
+    streams_data: Optional[Dict[str, Any]] = None
     created_at: datetime.datetime
 
 class ChatMessageResponse(BaseModel):
     id: str
     role: str
     content: str
+    thinking: Optional[str] = None
     is_agentic: bool
     meeting: Optional[MeetingResponse] = None
     created_at: datetime.datetime
@@ -456,7 +458,6 @@ async def stream_standard_message(
     async def event_generator():
         client = genai.Client()
         try:
-            # We must use generate_content_stream to get SSE streaming
             response_stream = client.models.generate_content_stream(
                 model='gemini-3.1-flash-lite',
                 contents=contents,
@@ -466,16 +467,33 @@ async def stream_standard_message(
                 )
             )
             
-            full_response = ""
+            from agents import AgentStreamParser
+            parser = AgentStreamParser()
+            full_text = ""
+            full_thinking = ""
+            
             for chunk in response_stream:
                 if chunk.text:
-                    full_response += chunk.text
-                    yield {"data": json.dumps({"type": "chunk", "text": chunk.text})}
+                    for is_thinking, parsed_content in parser.process_chunk(chunk.text):
+                        if is_thinking:
+                            full_thinking += parsed_content
+                            yield {"data": json.dumps({"type": "thinking", "text": parsed_content})}
+                        else:
+                            full_text += parsed_content
+                            yield {"data": json.dumps({"type": "chunk", "text": parsed_content})}
+            
+            if parser.buffer:
+                if parser.is_thinking:
+                    full_thinking += parser.buffer
+                    yield {"data": json.dumps({"type": "thinking", "text": parser.buffer})}
+                else:
+                    full_text += parser.buffer
+                    yield {"data": json.dumps({"type": "chunk", "text": parser.buffer})}
             
             # Save assistant message in background after stream completes
             async def save_msg():
                 async with AsyncSessionLocal() as session_db:
-                    asst_msg = ChatMessage(session_id=session.id, role="assistant", content=full_response)
+                    asst_msg = ChatMessage(session_id=session.id, role="assistant", content=full_text, thinking=full_thinking)
                     session_db.add(asst_msg)
                     await session_db.commit()
                     
@@ -541,15 +559,17 @@ async def chat_stream(
             # Generate a 1-2 paragraph executive summary
             client = genai.Client()
             try:
-                summary_prompt = f"Write a professional, 1-2 paragraph executive summary confirming that you are convening the {template_type.value} board to analyze the following decision. Do not use Markdown headings. Be concise and engaging.\n\nDecision:\n{body.prompt}"
+                template_name_formatted = template_type.value.replace("_", " ").title()
+                summary_prompt = f"Write a professional, 1-2 paragraph executive summary confirming that you are convening the {template_name_formatted} to analyze the following decision. Do not use Markdown headings. Be concise and engaging.\n\nDecision:\n{body.prompt}"
                 response = client.models.generate_content(
                     model='gemini-3.1-flash-lite',
                     contents=summary_prompt,
                 )
-                summary_text = response.text or f"I have convened the {template_type.value} board."
+                summary_text = response.text or f"I have convened the {template_name_formatted}."
             except Exception as e:
                 logger.error(f"Failed to generate summary: {e}")
-                summary_text = f"I have convened the {template_type.value} board."
+                template_name_formatted = template_type.value.replace("_", " ").title()
+                summary_text = f"I have convened the {template_name_formatted}."
 
             # The assistant message holds the meeting UI
             asst_msg = ChatMessage(
@@ -606,9 +626,13 @@ async def chat_stream(
             
             # After stream completes, save the report_data to DB
             if final_report_data or streams_accumulator:
-                new_meeting.report_data = final_report_data
-                new_meeting.streams_data = streams_accumulator
-                await db.commit()
+                async with AsyncSessionLocal() as session_db:
+                    result = await session_db.execute(select(Meeting).filter(Meeting.id == meeting_id))
+                    db_meeting = result.scalars().first()
+                    if db_meeting:
+                        db_meeting.report_data = final_report_data
+                        db_meeting.streams_data = streams_accumulator
+                        await session_db.commit()
                 
         except Exception as e:
             logger.error(f"Stream error: {e}", exc_info=True)

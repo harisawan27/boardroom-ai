@@ -131,6 +131,7 @@ export default function MeetingCanvas({
                     thinking={stream.thinking}
                     text={stream.text}
                     status={stream.status}
+                    voteData={report?.board_votes?.[role.key]}
                   />
                 );
               })}
