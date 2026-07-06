@@ -425,8 +425,8 @@ export default function Dashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="max-w-[85%] flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-white shadow-sm ring-1 ring-slate-900/5 flex items-center justify-center flex-shrink-0 p-1.5">
+                  <div className="w-full md:max-w-[85%] flex items-start gap-2 sm:gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white shadow-sm ring-1 ring-slate-900/5 flex items-center justify-center flex-shrink-0 p-1.5 hidden sm:flex">
                       <img src="/boardroom-ai.svg" alt="Avatar" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex flex-col items-start w-full">
@@ -475,7 +475,7 @@ export default function Dashboard() {
                             </div>
                           )}
                           {text && (
-                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-sm text-sm leading-relaxed prose prose-slate dark:prose-invert max-w-none">
+                          <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm px-3 sm:px-5 py-3 sm:py-3.5 shadow-sm text-sm leading-relaxed prose prose-slate dark:prose-invert max-w-none overflow-x-auto">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
                           </div>
                           )}
@@ -504,6 +504,7 @@ export default function Dashboard() {
                               streams: streamsObj
                             });
                             setIsConveneBoardSelected(true);
+                            setIsCanvasOpen(true);
                           }}
                           className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 rounded-xl text-sm font-medium transition-colors"
                         >

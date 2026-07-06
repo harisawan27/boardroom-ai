@@ -131,7 +131,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         <button
           onClick={() => {
             onSelectSession(null);
-            if (onClose) onClose();
+            if (window.innerWidth < 768 && onClose) onClose();
           }}
           className="w-full flex items-center justify-center gap-2 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-medium py-2.5 rounded-xl transition-all shadow-sm dark:shadow-none"
         >
@@ -163,7 +163,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
                   onClick={() => {
                     if (editingId !== s.id) {
                       onSelectSession(s);
-                      if (onClose) onClose();
+                      if (window.innerWidth < 768 && onClose) onClose();
                     }
                   }}
                   className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 pr-16 ${
@@ -248,7 +248,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
             <button
               onClick={() => {
                 onOpenTutorial();
-                if (onClose) onClose();
+                if (window.innerWidth < 768 && onClose) onClose();
               }}
               className="w-full flex items-center gap-3 md:gap-2 text-sm md:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors py-2 md:py-1.5 px-3 md:px-2 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-500/10 font-medium"
             >
@@ -278,7 +278,7 @@ export default function Sidebar({ onSelectSession, selectedSessionId, isOpen = f
         <button
           onClick={() => {
             navigate("/settings");
-            if (onClose) onClose();
+            if (window.innerWidth < 768 && onClose) onClose();
           }}
           className="w-full flex items-center gap-3 md:gap-2 text-sm md:text-xs text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors py-2 md:py-1.5 px-3 md:px-2 rounded-xl hover:bg-slate-200/50 dark:hover:bg-white/5"
         >
