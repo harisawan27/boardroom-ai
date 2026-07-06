@@ -324,7 +324,7 @@ export default function Dashboard() {
               </button>
             )}
             <div className="flex items-center gap-2.5">
-              <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-6 h-6 object-contain dark:invert" />
+              <img src="/boardroom-ai.svg" alt="Boardroom AI Logo" className="w-6 h-6 object-contain" />
               <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 hidden sm:block"></div>
               <span className="text-lg font-extrabold tracking-tight">
                 <span className="text-[#0F172A] dark:text-white">Boardroom</span><span className="text-[#2563EB]">AI</span>
