@@ -38,7 +38,7 @@ from templates.board_templates import (
     TEMPLATE_METADATA,
 )
 from agents import run_meeting
-from database import get_db, init_db, AsyncSessionLocal
+from database import get_db, AsyncSessionLocal
 from models.user import User
 from models.meeting import Meeting
 from models.chat import ChatSession, ChatMessage
