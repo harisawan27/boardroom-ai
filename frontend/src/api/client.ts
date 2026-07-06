@@ -238,7 +238,6 @@ export async function streamStandardMessage(
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
-    let isThinking = false;
 
     while (true) {
       const { value, done } = await reader.read();
