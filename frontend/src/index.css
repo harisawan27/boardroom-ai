@@ -5,6 +5,7 @@
    ========================================================================= */
 
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* -------------------------------------------------------------------------
    Custom Theme (Tailwind v4 CSS-first config)

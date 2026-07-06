@@ -50,6 +50,7 @@ export async function streamChat(
   onRoles: (roles: RoleInfo[]) => void,
   onThinking: (agent: string, text: string) => void,
   onChunk: (agent: string, text: string) => void,
+  onStatus: (agent: string, status: string, message?: string) => void,
   onReport: (report: any) => void,
   onError: (error: string) => void,
   onComplete: () => void
@@ -90,6 +91,9 @@ export async function streamChat(
             switch (data.type) {
               case "roles":
                 onRoles(data.data);
+                break;
+              case "status":
+                onStatus(data.agent, data.status, data.message);
                 break;
               case "thinking":
                 onThinking(data.agent, data.text);

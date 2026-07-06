@@ -13,6 +13,7 @@ class Meeting(Base):
     template = Column(String, nullable=False)
     prompt = Column(String, nullable=False)
     report_data = Column(JSONB, nullable=True)  # Store the final synthesized report
+    streams_data = Column(JSONB, nullable=True) # Store individual agent streams and roles
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="meetings")

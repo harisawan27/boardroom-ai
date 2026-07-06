@@ -1,18 +1,23 @@
 import asyncio
-from database import engine
 from sqlalchemy import text
+from database import engine
 
-async def run_migration():
+async def migrate():
     async with engine.begin() as conn:
-        print("Running migration to add profile_data to users table...")
         try:
-            await conn.execute(text("ALTER TABLE users ADD COLUMN profile_data JSONB;"))
-            print("Migration successful: Added profile_data column.")
+            await conn.execute(text("ALTER TABLE meetings ADD COLUMN streams_data JSONB;"))
+            print("Successfully added streams_data column.")
         except Exception as e:
-            if "already exists" in str(e):
-                print("Migration skipped: Column profile_data already exists.")
+            if "already exists" in str(e) or "Duplicate column" in str(e):
+                print("Column already exists.")
             else:
-                print(f"Migration failed: {e}")
+                print(f"Error (might be sqlite syntax or exists): {e}")
+                # Try SQLite syntax if JSONB fails or something
+                try:
+                    await conn.execute(text("ALTER TABLE meetings ADD COLUMN streams_data JSON;"))
+                    print("Added as JSON for SQLite.")
+                except Exception as e2:
+                    print(f"Fallback error: {e2}")
 
 if __name__ == "__main__":
-    asyncio.run(run_migration())
+    asyncio.run(migrate())

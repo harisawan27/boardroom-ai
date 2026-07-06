@@ -10,7 +10,7 @@ interface AgentStreamProps {
   role: RoleInfo;
   thinking: string;
   text: string;
-  status: "idle" | "thinking" | "done";
+  status: "idle" | "thinking" | "done" | "waiting";
 }
 
 export default function AgentStream({ role, thinking, text, status }: AgentStreamProps) {
@@ -43,6 +43,8 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
     <div className={`glass-elevated rounded-xl border animate-slide-up overflow-hidden transition-all duration-300 ${
       isThinking 
         ? "border-blue-500/30 ring-1 ring-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)] dark:shadow-[0_0_20px_rgba(59,130,246,0.15)]" 
+        : status === "waiting"
+        ? "border-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.05)] dark:shadow-[0_0_15px_rgba(251,191,36,0.08)]"
         : "border-slate-200 dark:border-white/5"
     }`}>
       {/* Header (Click to toggle) */}
@@ -68,6 +70,13 @@ export default function AgentStream({ role, thinking, text, status }: AgentStrea
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
               Thinking...
+            </span>
+          ) : status === "waiting" ? (
+            <span className="flex items-center gap-1.5 text-xs text-amber-500 dark:text-amber-400">
+              <svg className="w-3.5 h-3.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Waiting turn
             </span>
           ) : (
             <span className="text-xs text-emerald-400 flex items-center gap-1">

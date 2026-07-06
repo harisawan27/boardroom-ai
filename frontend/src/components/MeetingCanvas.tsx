@@ -3,7 +3,7 @@ import AgentStream from "./AgentStream";
 import ReportBanner from "./ReportBanner";
 
 interface AgentStreamState {
-  status: "idle" | "thinking" | "done";
+  status: "idle" | "thinking" | "done" | "waiting";
   thinking: string;
   text: string;
 }

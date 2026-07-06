@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { streamChat, getSession, createSession, streamStandardMessage, deleteLastTurn, type RoleInfo } from "../api/client";
 import MeetingCanvas from "../components/MeetingCanvas";
 import AuthModal from "../components/AuthModal";
@@ -22,7 +24,7 @@ interface ActiveMeetingData {
   template: string;
   decisionTitle: string;
   report?: any;
-  streams?: Record<string, { status: "idle" | "thinking" | "done"; thinking: string; text: string }>;
+  streams?: Record<string, { status: "idle" | "thinking" | "done" | "waiting"; thinking: string; text: string }>;
   rolesInfo?: RoleInfo[];
 }
 
@@ -227,7 +229,7 @@ export default function Dashboard() {
             const initialStreams: any = {};
             roles.forEach(r => {
               if (r.key !== "Moderator") {
-                initialStreams[r.key] = { text: "", thinking: "", status: "thinking" };
+                initialStreams[r.key] = { text: "", thinking: "", status: "idle" };
               }
             });
             return { ...prev, rolesInfo: roles, streams: initialStreams };
@@ -255,6 +257,23 @@ export default function Dashboard() {
               streams: {
                 ...prev.streams,
                 [agent]: { ...prev.streams[agent], text: prev.streams[agent].text + text, status: "thinking" }
+              }
+            };
+          });
+        },
+        // onStatus
+        (agent, status, message) => {
+          setActiveMeetingData(prev => {
+            if (!prev || !prev.streams?.[agent]) return prev;
+            return {
+              ...prev,
+              streams: {
+                ...prev.streams,
+                [agent]: { 
+                  ...prev.streams[agent], 
+                  status: status as "idle" | "thinking" | "done" | "waiting", 
+                  text: message ? message : prev.streams[agent].text 
+                }
               }
             };
           });
@@ -289,14 +308,7 @@ export default function Dashboard() {
     }
   };
 
-  const openPastMeeting = (meeting: any) => {
-    setActiveMeetingData({
-      template: meeting.template,
-      decisionTitle: meeting.prompt,
-      report: meeting.report_data,
-    });
-    setIsCanvasOpen(true);
-  };
+
 
   if (!token) return <AuthModal />;
 
@@ -421,39 +433,75 @@ export default function Dashboard() {
                       <img src="/boardroom-ai.svg" alt="Avatar" className="w-full h-full object-contain" />
                     </div>
                     <div className="flex flex-col items-start w-full">
-                      {msg.thinking && (
-                        <div className="mb-2 w-full max-w-xl">
-                          <button 
-                            onClick={() => setThinkingExpandedId(thinkingExpandedId === msg.id ? null : msg.id)}
-                            className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-full"
-                          >
-                            <svg className={`w-3.5 h-3.5 transition-transform ${thinkingExpandedId === msg.id ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            {isProcessing && index === messages.length - 1 ? (
-                              <span className="flex items-center gap-1">
-                                Thinking<span className="animate-pulse">...</span>
-                              </span>
-                            ) : "Thought Process"}
-                          </button>
-                          {thinkingExpandedId === msg.id && (
-                            <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-white/5 rounded-xl text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                              {msg.thinking}
+                      {(() => {
+                        const { text, thinking } = (msg.role === "assistant" || msg.is_agentic)
+                          ? (function() {
+                              let t = msg.content || "";
+                              let th = msg.thinking || "";
+                              // Try closed tag
+                              const match = t.match(/<think>([\s\S]*?)<\/think>/);
+                              if (match) {
+                                th = match[1];
+                                t = t.replace(/<think>[\s\S]*?<\/think>/, "");
+                              } else {
+                                // Try unclosed tag (if streaming)
+                                const openMatch = t.match(/<think>([\s\S]*)/);
+                                if (openMatch && !msg.thinking) {
+                                  th = openMatch[1];
+                                  t = t.replace(/<think>[\s\S]*/, "");
+                                }
+                              }
+                              return { text: t.trim(), thinking: th.trim() };
+                            })()
+                          : { text: msg.content, thinking: msg.thinking };
+
+                        return (
+                          <>
+                          {thinking && (
+                            <div className="mb-2 w-full max-w-xl">
+                              <button 
+                                onClick={() => setThinkingExpandedId(thinkingExpandedId === msg.id ? null : msg.id)}
+                                className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-full"
+                              >
+                                <svg className={`w-3.5 h-3.5 transition-transform ${thinkingExpandedId === msg.id ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                {isProcessing && index === messages.length - 1 ? (
+                                  <span className="flex items-center gap-1">
+                                    Thinking<span className="animate-pulse">...</span>
+                                  </span>
+                                ) : "Thought Process"}
+                              </button>
+                              {thinkingExpandedId === msg.id && (
+                                <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-white/5 rounded-xl text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto custom-scrollbar">
+                                  {thinking}
+                                </div>
+                              )}
                             </div>
                           )}
-                        </div>
-                      )}
-                      {msg.content && (
-                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-sm text-sm leading-relaxed whitespace-pre-wrap">
-                        {msg.content}
-                      </div>
-                      )}
-                      <div className="flex items-center gap-1 mt-1 ml-1 text-slate-400">
-                        <button onClick={() => handleCopy(msg.content, msg.id)} className="p-1.5 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Copy Text">
-                          {copiedId === msg.id ? <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
-                        </button>
-                      </div>
+                          {text && (
+                          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200 rounded-2xl rounded-tl-sm px-4 sm:px-5 py-3 sm:py-3.5 shadow-sm text-sm leading-relaxed prose prose-slate dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+                          </div>
+                          )}
+                          <div className="flex items-center gap-1 mt-1 ml-1 text-slate-400">
+                            <button onClick={() => handleCopy(text, msg.id)} className="p-1.5 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Copy Text">
+                              {copiedId === msg.id ? <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
+                            </button>
+                          </div>
+                          </>
+                        );
+                      })()}
                       {msg.is_agentic && msg.meeting && (
                         <button 
-                          onClick={() => openPastMeeting(msg.meeting)}
+                          onClick={() => {
+                            setActiveMeetingData({
+                              template: msg.meeting.template,
+                              decisionTitle: msg.meeting.prompt ? "Past Board Meeting" : "Live Board Meeting",
+                              report: msg.meeting.report_data,
+                              rolesInfo: msg.meeting.streams_data?._roles || [],
+                              streams: msg.meeting.streams_data || {}
+                            });
+                            setIsCanvasOpen(true);
+                          }}
                           className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 rounded-xl text-sm font-medium transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>

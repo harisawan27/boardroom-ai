@@ -41,13 +41,13 @@ MODERATOR_TOKENS = 2048
 THINKING_INSTRUCTION = """
 ## Important: Show Your Reasoning
 Before giving your final analysis, first write your internal reasoning process
-wrapped in <THINKING> tags. This helps the user understand how you arrived at
+wrapped in <think> tags. This helps the user understand how you arrived at
 your conclusions.
 
 Example format:
-<THINKING>
+<think>
 [Your step-by-step reasoning here...]
-</THINKING>
+</think>
 
 [Your final analysis here]
 VOTE: YES/NO/DEFER

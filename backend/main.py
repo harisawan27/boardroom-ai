@@ -581,23 +581,33 @@ async def chat_stream(
 
     async def event_generator():
         try:
-            # We pass a callback to run_meeting or we update the DB after it yields all events.
-            # However, run_meeting yields string events. We can capture the final report event.
             final_report_data = None
+            streams_accumulator = {"_roles": []}
+            
             async for chunk in run_meeting(meeting_id, template_type, {"prompt": final_prompt, "decision_title": "Chat Session"}):
                 yield {"data": chunk}
                 try:
                     data = json.loads(chunk)
                     if data.get("type") == "report":
                         final_report_data = data.get("data")
+                    elif data.get("type") == "roles":
+                        streams_accumulator["_roles"] = data.get("data")
+                    elif data.get("type") in ["chunk", "thinking"]:
+                        agent = data.get("agent")
+                        if agent:
+                            if agent not in streams_accumulator:
+                                streams_accumulator[agent] = {"text": "", "thinking": "", "status": "done"}
+                            if data.get("type") == "thinking":
+                                streams_accumulator[agent]["thinking"] += data.get("text", "")
+                            else:
+                                streams_accumulator[agent]["text"] += data.get("text", "")
                 except:
                     pass
             
             # After stream completes, save the report_data to DB
-            if final_report_data:
-                # Need a new DB session since the previous one might be tied to the request which could be closed,
-                # but actually EventSourceResponse runs in the same context if we are careful, or we use the injected db.
+            if final_report_data or streams_accumulator:
                 new_meeting.report_data = final_report_data
+                new_meeting.streams_data = streams_accumulator
                 await db.commit()
                 
         except Exception as e:

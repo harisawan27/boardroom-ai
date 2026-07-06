@@ -44,17 +44,21 @@ class AgentStreamParser:
         
         while self.buffer:
             if not self.is_thinking:
-                idx = self.buffer.find("<THINKING>")
+                # Also handle uppercase just in case Gemma still outputs it
+                idx = self.buffer.find("<think>")
+                if idx == -1: idx = self.buffer.find("<THINKING>")
+                
                 if idx != -1:
+                    tag_len = 7 if self.buffer[idx:idx+7] == "<think>" else 10
                     before = self.buffer[:idx]
                     if before:
                         yield (False, before)
                     self.is_thinking = True
-                    self.buffer = self.buffer[idx + len("<THINKING>"):]
+                    self.buffer = self.buffer[idx + tag_len:]
                 else:
                     matched_partial = False
-                    for i in range(1, len("<THINKING>")):
-                        if self.buffer.endswith("<THINKING>"[:i]):
+                    for i in range(1, 10):
+                        if self.buffer.endswith("<think>"[:i]) or self.buffer.endswith("<THINKING>"[:i]):
                             before = self.buffer[:-i]
                             if before:
                                 yield (False, before)
@@ -66,17 +70,20 @@ class AgentStreamParser:
                         self.buffer = ""
                         
             else:
-                idx = self.buffer.find("</THINKING>")
+                idx = self.buffer.find("</think>")
+                if idx == -1: idx = self.buffer.find("</THINKING>")
+                
                 if idx != -1:
+                    tag_len = 8 if self.buffer[idx:idx+8] == "</think>" else 11
                     before = self.buffer[:idx]
                     if before:
                         yield (True, before)
                     self.is_thinking = False
-                    self.buffer = self.buffer[idx + len("</THINKING>"):]
+                    self.buffer = self.buffer[idx + tag_len:]
                 else:
                     matched_partial = False
-                    for i in range(1, len("</THINKING>")):
-                        if self.buffer.endswith("</THINKING>"[:i]):
+                    for i in range(1, 11):
+                        if self.buffer.endswith("</think>"[:i]) or self.buffer.endswith("</THINKING>"[:i]):
                             before = self.buffer[:-i]
                             if before:
                                 yield (True, before)
@@ -145,51 +152,103 @@ Analyze this thoroughly from your specific expertise. Show your thinking process
     queue = asyncio.Queue()
 
     async def stream_agent(agent_config, user_msg, q):
-        try:
-            contents = [genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_msg)])]
-            response_stream = await client.aio.models.generate_content_stream(
-                model=agent_config["model"],
-                contents=contents,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=agent_config["prompt"],
-                    temperature=agent_config.get("temperature", 0.7),
-                    max_output_tokens=agent_config.get("tokens", 2048)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    import random
+                    await asyncio.sleep(random.uniform(1.0, 3.0) * attempt)
+                    
+                contents = [genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_msg)])]
+                response_stream = await client.aio.models.generate_content_stream(
+                    model=agent_config["model"],
+                    contents=contents,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=agent_config["prompt"],
+                        temperature=agent_config.get("temperature", 0.7),
+                        max_output_tokens=agent_config.get("tokens", 2048)
+                    )
                 )
-            )
-            
-            parser = AgentStreamParser()
-            full_text = ""
-            
-            async for chunk in response_stream:
-                if chunk.text:
-                    full_text += chunk.text
-                    for is_thinking, content in parser.process_chunk(chunk.text):
-                        await q.put({
-                            "type": "thinking" if is_thinking else "chunk",
-                            "agent": agent_config["key"],
-                            "text": content
-                        })
-                        
-            if parser.buffer:
-                await q.put({
-                    "type": "thinking" if parser.is_thinking else "chunk",
-                    "agent": agent_config["key"],
-                    "text": parser.buffer
-                })
                 
-            await q.put({"type": "done", "agent": agent_config["key"], "full_text": full_text})
-            
-        except Exception as e:
-            logger.error(f"Error in {agent_config['key']}: {e}")
-            await q.put({"type": "done", "agent": agent_config["key"], "full_text": f"Error: {e}"})
+                parser = AgentStreamParser()
+                full_text = ""
+                
+                async for chunk in response_stream:
+                    if chunk.text:
+                        full_text += chunk.text
+                        for is_thinking, content in parser.process_chunk(chunk.text):
+                            await q.put({
+                                "type": "thinking" if is_thinking else "chunk",
+                                "agent": agent_config["key"],
+                                "text": content
+                            })
+                            
+                if parser.buffer:
+                    await q.put({
+                        "type": "thinking" if parser.is_thinking else "chunk",
+                        "agent": agent_config["key"],
+                        "text": parser.buffer
+                    })
+                    
+                await q.put({"type": "done", "agent": agent_config["key"], "full_text": full_text})
+                return # success
+                
+            except Exception as e:
+                logger.warning(f"Error in {agent_config['key']} (attempt {attempt+1}/{max_retries}): {e}")
+                if attempt == max_retries - 1:
+                    logger.error(f"Final error in {agent_config['key']}: {e}")
+                    err_msg = f"\n\n*[System: Error connecting to model. Failed to generate response after {max_retries} attempts.]*\nError detail: {e}"
+                    await q.put({"type": "chunk", "agent": agent_config["key"], "text": err_msg})
+                    await q.put({"type": "done", "agent": agent_config["key"], "full_text": err_msg})
 
     logger.info(f"Running {config['name']} for meeting {meeting_id}...")
-
-    tasks = []
-    for role in config["roles"]:
-        tasks.append(asyncio.create_task(stream_agent(role, user_message, queue)))
-        
+    
     completed_specialists = 0
+    specialist_texts = {}
+
+    async def orchestrator():
+        batch_size = 3
+        roles = config["roles"]
+        current_context = user_message
+        
+        for i in range(0, len(roles), batch_size):
+            batch = roles[i:i+batch_size]
+            
+            # Send waiting status for future batches
+            if i > 0:
+                for role in batch:
+                    await queue.put({
+                        "type": "status",
+                        "agent": role["key"],
+                        "status": "waiting",
+                        "message": "⏳ Reviewing colleagues' notes..."
+                    })
+            
+            await asyncio.sleep(0.1)
+            
+            # Update status to thinking for current batch
+            for role in batch:
+                await queue.put({
+                    "type": "status",
+                    "agent": role["key"],
+                    "status": "thinking",
+                    "message": ""
+                })
+
+            batch_tasks = [asyncio.create_task(stream_agent(role, current_context, queue)) for role in batch]
+            await asyncio.gather(*batch_tasks)
+            
+            # Build context for next batch using accumulated specialist_texts
+            # Note: specialist_texts is populated by the consumer loop below
+            if i + batch_size < len(roles):
+                current_context += "\n\n### Previous Board Member Analyses:\n"
+                for role in batch:
+                    # Wait briefly to ensure the consumer loop processed the 'done' event
+                    await asyncio.sleep(0.2)
+                    current_context += f"**{role['title']}**: {specialist_texts.get(role['key'], 'No analysis provided.')}\n\n"
+                current_context += "Please critically review the above analyses and build upon them in your own assessment."
+
+    asyncio.create_task(orchestrator())
     specialist_texts = {}
     
     while completed_specialists < len(config["roles"]):
@@ -200,8 +259,10 @@ Analyze this thoroughly from your specific expertise. Show your thinking process
         else:
             yield json.dumps({
                 "type": event["type"],
-                "agent": event["agent"],
-                "text": event["text"]
+                "agent": event.get("agent"),
+                "text": event.get("text", ""),
+                "status": event.get("status"),
+                "message": event.get("message")
             })
             
     # Now run Moderator
