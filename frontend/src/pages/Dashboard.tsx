@@ -237,54 +237,50 @@ export default function Dashboard() {
         },
         // onThinking
         (agent, text) => {
-          setActiveMeetingData(prev => {
-            if (!prev || !prev.streams?.[agent]) return prev;
-            return {
-              ...prev,
-              streams: {
-                ...prev.streams,
-                [agent]: { ...prev.streams[agent], thinking: prev.streams[agent].thinking + text, status: "thinking" }
-              }
+          setActiveMeetingData((prev: ActiveMeetingData | null) => {
+            if (!prev || !prev.streams || !prev.streams[agent]) return prev;
+            const updatedStreams = { ...prev.streams };
+            updatedStreams[agent] = {
+              ...updatedStreams[agent],
+              thinking: updatedStreams[agent].thinking + text,
+              status: "thinking"
             };
+            return { ...prev, streams: updatedStreams };
           });
         },
         // onChunk
         (agent, text) => {
-          setActiveMeetingData(prev => {
-            if (!prev || !prev.streams?.[agent]) return prev;
-            return {
-              ...prev,
-              streams: {
-                ...prev.streams,
-                [agent]: { ...prev.streams[agent], text: prev.streams[agent].text + text, status: "thinking" }
-              }
+          setActiveMeetingData((prev: ActiveMeetingData | null) => {
+            if (!prev || !prev.streams || !prev.streams[agent]) return prev;
+            const updatedStreams = { ...prev.streams };
+            updatedStreams[agent] = {
+              ...updatedStreams[agent],
+              text: updatedStreams[agent].text + text,
+              status: "thinking"
             };
+            return { ...prev, streams: updatedStreams };
           });
         },
         // onStatus
         (agent, status, message) => {
-          setActiveMeetingData(prev => {
-            if (!prev || !prev.streams?.[agent]) return prev;
-            return {
-              ...prev,
-              streams: {
-                ...prev.streams,
-                [agent]: { 
-                  ...prev.streams[agent], 
-                  status: status as "idle" | "thinking" | "done" | "waiting", 
-                  text: message ? message : prev.streams[agent].text 
-                }
-              }
+          setActiveMeetingData((prev: ActiveMeetingData | null) => {
+            if (!prev || !prev.streams || !prev.streams[agent]) return prev;
+            const updatedStreams = { ...prev.streams };
+            updatedStreams[agent] = {
+              ...updatedStreams[agent],
+              status: status as "idle" | "thinking" | "done" | "waiting",
+              text: message ? message : updatedStreams[agent].text
             };
+            return { ...prev, streams: updatedStreams };
           });
         },
         // onReport
         (reportData) => {
-          setActiveMeetingData(prev => {
+          setActiveMeetingData((prev: ActiveMeetingData | null) => {
             if (!prev) return prev;
             const updatedStreams = { ...(prev.streams || {}) };
             for (const a in updatedStreams) {
-              updatedStreams[a].status = "done";
+              updatedStreams[a] = { ...updatedStreams[a], status: "done" };
             }
             return { ...prev, streams: updatedStreams, report: reportData };
           });
