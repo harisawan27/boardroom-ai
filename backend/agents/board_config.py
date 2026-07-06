@@ -31,22 +31,23 @@ MODEL_B = "gemma-4-26b-a4b-it"    # Slots: 3 specialists
 MODEL_MOD = "gemini-3.1-flash-lite"  # Slot: moderator only
 
 # Token budgets — Gemma has unlimited TPM so we can be generous
-SPECIALIST_TOKENS = 8192
-MODERATOR_TOKENS = 8192
+SPECIALIST_TOKENS = 1024
+MODERATOR_TOKENS = 4096
 
 
 # ---------------------------------------------------------------------------
 # Shared prompt fragments
 # ---------------------------------------------------------------------------
 THINKING_INSTRUCTION = """
-## Important: Show Your Reasoning
+## Important: Show Your Reasoning (MAX 150 WORDS)
 Before giving your final analysis, first write your internal reasoning process
 wrapped in <think> tags. This helps the user understand how you arrived at
-your conclusions.
+your conclusions. You MUST keep your thinking extremely concise (under 150 words) 
+so you have enough space for your final analysis.
 
 Example format:
 <think>
-[Your step-by-step reasoning here...]
+[Your brief, step-by-step reasoning here...]
 </think>
 
 [Your final analysis here]

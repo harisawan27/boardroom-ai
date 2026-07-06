@@ -160,36 +160,41 @@ Analyze this thoroughly from your specific expertise. Show your thinking process
                     await asyncio.sleep(random.uniform(1.0, 3.0) * attempt)
                     
                 contents = [genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=user_msg)])]
-                response_stream = await client.aio.models.generate_content_stream(
-                    model=agent_config["model"],
-                    contents=contents,
-                    config=genai_types.GenerateContentConfig(
-                        system_instruction=agent_config["prompt"],
-                        temperature=agent_config.get("temperature", 0.7),
-                        max_output_tokens=agent_config.get("tokens", 2048)
+                
+                async def _run_stream():
+                    response_stream = await client.aio.models.generate_content_stream(
+                        model=agent_config["model"],
+                        contents=contents,
+                        config=genai_types.GenerateContentConfig(
+                            system_instruction=agent_config["prompt"],
+                            temperature=agent_config.get("temperature", 0.7),
+                            max_output_tokens=agent_config.get("tokens", 2048)
+                        )
                     )
-                )
-                
-                parser = AgentStreamParser()
-                full_text = ""
-                
-                async for chunk in response_stream:
-                    if chunk.text:
-                        full_text += chunk.text
-                        for is_thinking, content in parser.process_chunk(chunk.text):
-                            await q.put({
-                                "type": "thinking" if is_thinking else "chunk",
-                                "agent": agent_config["key"],
-                                "text": content
-                            })
-                            
-                if parser.buffer:
-                    await q.put({
-                        "type": "thinking" if parser.is_thinking else "chunk",
-                        "agent": agent_config["key"],
-                        "text": parser.buffer
-                    })
                     
+                    parser = AgentStreamParser()
+                    full_text = ""
+                    
+                    async for chunk in response_stream:
+                        if chunk.text:
+                            full_text += chunk.text
+                            for is_thinking, content in parser.process_chunk(chunk.text):
+                                await q.put({
+                                    "type": "thinking" if is_thinking else "chunk",
+                                    "agent": agent_config["key"],
+                                    "text": content
+                                })
+                                
+                    if parser.buffer:
+                        await q.put({
+                            "type": "thinking" if parser.is_thinking else "chunk",
+                            "agent": agent_config["key"],
+                            "text": parser.buffer
+                        })
+                    return full_text
+                
+                # Enforce a strict 45-second timeout on the network call to prevent infinite socket hangs
+                full_text = await asyncio.wait_for(_run_stream(), timeout=45.0)
                 await q.put({"type": "done", "agent": agent_config["key"], "full_text": full_text})
                 return # success
                 
@@ -207,7 +212,7 @@ Analyze this thoroughly from your specific expertise. Show your thinking process
     specialist_texts = {}
 
     async def orchestrator():
-        batch_size = 3
+        batch_size = 6
         roles = config["roles"]
         current_context = user_message
         
