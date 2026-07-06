@@ -133,6 +133,9 @@ class ChatRequest(BaseModel):
     prompt: str = Field(..., description="The user's raw decision prompt")
     session_id: Optional[str] = Field(None, description="The chat session ID")
 
+class SessionRenameRequest(BaseModel):
+    title: str
+
 class StandardMessageRequest(BaseModel):
     session_id: str
     message: str
@@ -220,6 +223,12 @@ async def update_profile(profile: ProfileUpdate, current_user: User = Depends(ge
     await db.commit()
     return {"status": "success", "profile_data": current_user.profile_data}
 
+@app.delete("/auth/me", tags=["Auth"])
+async def delete_account(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await db.delete(current_user)
+    await db.commit()
+    return {"status": "success", "detail": "Account deleted"}
+
 @app.get("/meetings", response_model=List[MeetingResponse], tags=["Meetings"])
 async def get_meetings(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -244,6 +253,7 @@ async def create_session(current_user: User = Depends(get_current_user), db: Asy
 async def get_sessions(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(ChatSession)
+        .options(selectinload(ChatSession.messages).selectinload(ChatMessage.meeting))
         .filter(ChatSession.user_id == current_user.id)
         .order_by(ChatSession.updated_at.desc())
     )
@@ -260,6 +270,45 @@ async def get_session(session_id: str, current_user: User = Depends(get_current_
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return session
+
+@app.put("/chat/sessions/{session_id}", response_model=ChatSessionResponse, tags=["Chat"])
+async def rename_session(
+    session_id: str, 
+    body: SessionRenameRequest,
+    current_user: User = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(ChatSession)
+        .options(selectinload(ChatSession.messages).selectinload(ChatMessage.meeting))
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+    )
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    session.title = body.title
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+@app.delete("/chat/sessions/{session_id}", tags=["Chat"])
+async def delete_session(
+    session_id: str, 
+    current_user: User = Depends(get_current_user), 
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(ChatSession)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+    )
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    await db.delete(session)
+    await db.commit()
+    return {"status": "success"}
 
 @app.post("/chat/message", response_model=ChatMessageResponse, tags=["Chat"])
 async def send_standard_message(

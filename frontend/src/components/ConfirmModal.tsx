@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  description: string;
+  description: ReactNode;
   confirmText?: string;
   cancelText?: string;
   isDestructive?: boolean;
@@ -77,9 +77,9 @@ export default function ConfirmModal({
             </h3>
           </div>
           
-          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+          <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
             {description}
-          </p>
+          </div>
           
           <div className="flex items-center justify-end gap-3">
             <button

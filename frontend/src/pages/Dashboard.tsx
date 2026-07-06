@@ -5,6 +5,7 @@ import AuthModal from "../components/AuthModal";
 import Sidebar from "../components/Sidebar";
 import TutorialModal from "../components/TutorialModal";
 import { useAuthStore } from "../store/authStore";
+import { useSessionStore } from "../store/sessionStore";
 import { TEMPLATES } from "../types/meeting";
 
 interface Message {
@@ -26,6 +27,7 @@ interface ActiveMeetingData {
 
 export default function Dashboard() {
   const token = useAuthStore((state) => state.token);
+  const addSession = useSessionStore((state) => state.addSession);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("STARTUP_BOARD");
@@ -102,6 +104,7 @@ export default function Dashboard() {
         const newSession = await createSession();
         sessionId = newSession.id;
         setActiveSessionId(sessionId);
+        addSession(newSession);
       }
 
       // Optimistic update
@@ -130,6 +133,7 @@ export default function Dashboard() {
         const newSession = await createSession();
         sessionId = newSession.id;
         setActiveSessionId(sessionId);
+        addSession(newSession);
       }
 
       const tempUserId = Date.now().toString();

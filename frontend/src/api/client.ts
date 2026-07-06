@@ -158,6 +158,11 @@ export async function updateProfile(profileData: any): Promise<any> {
   return response.data;
 }
 
+export async function deleteAccount(): Promise<any> {
+  const response = await apiClient.delete("/auth/me");
+  return response.data;
+}
+
 // ---------------------------------------------------------------------------
 // Copilot Chat & Sessions API
 // ---------------------------------------------------------------------------
@@ -174,6 +179,11 @@ export async function getSessions(): Promise<any[]> {
 
 export async function getSession(sessionId: string): Promise<any> {
   const response = await apiClient.get(`/chat/sessions/${sessionId}`);
+  return response.data;
+}
+
+export async function renameSession(sessionId: string, title: string): Promise<any> {
+  const response = await apiClient.put(`/chat/sessions/${sessionId}`, { title });
   return response.data;
 }
 
