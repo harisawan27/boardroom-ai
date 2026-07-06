@@ -490,14 +490,20 @@ export default function Dashboard() {
                       {msg.is_agentic && msg.meeting && (
                         <button 
                           onClick={() => {
+                            const dbStreamsData = msg.meeting?.streams_data || {};
+                            const streamsObj = Object.fromEntries(
+                              Object.entries(dbStreamsData).filter(([k]) => k !== "_roles")
+                            ) as Record<string, { status: "idle" | "thinking" | "done" | "waiting"; thinking: string; text: string }>;
+
                             setActiveMeetingData({
-                              template: msg.meeting.template,
-                              decisionTitle: msg.meeting.prompt ? "Past Board Meeting" : "Live Board Meeting",
-                              report: msg.meeting.report_data,
-                              rolesInfo: msg.meeting.streams_data?._roles || [],
-                              streams: msg.meeting.streams_data || {}
+                              id: msg.meeting?.id,
+                              template: msg.meeting?.template || "STARTUP_BOARD",
+                              decisionTitle: msg.meeting?.prompt ? "Past Board Meeting" : "Live Board Meeting",
+                              report: msg.meeting?.report_data,
+                              rolesInfo: dbStreamsData._roles || [],
+                              streams: streamsObj
                             });
-                            setIsCanvasOpen(true);
+                            setIsConveneBoardSelected(true);
                           }}
                           className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 rounded-xl text-sm font-medium transition-colors"
                         >

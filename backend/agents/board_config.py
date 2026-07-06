@@ -31,8 +31,8 @@ MODEL_B = "gemma-4-26b-a4b-it"    # Slots: 3 specialists
 MODEL_MOD = "gemini-3.1-flash-lite"  # Slot: moderator only
 
 # Token budgets — Gemma has unlimited TPM so we can be generous
-SPECIALIST_TOKENS = 2048
-MODERATOR_TOKENS = 2048
+SPECIALIST_TOKENS = 8192
+MODERATOR_TOKENS = 8192
 
 
 # ---------------------------------------------------------------------------
