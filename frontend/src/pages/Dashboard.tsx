@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { streamChat, getSession, createSession, streamStandardMessage, deleteLastTurn } from "../api/client";
+import { streamChat, getSession, createSession, streamStandardMessage, deleteLastTurn, getMe } from "../api/client";
 import type { RoleInfo } from "../api/client";
 import MeetingCanvas from "../components/MeetingCanvas";
 import AuthModal from "../components/AuthModal";
@@ -31,6 +31,8 @@ interface ActiveMeetingData {
 
 export default function Dashboard() {
   const token = useAuthStore((state) => state.token);
+  const setUser = useAuthStore((state) => state.setUser);
+  const fetchSessions = useSessionStore((state) => state.fetchSessions);
   const addSession = useSessionStore((state) => state.addSession);
   const abortControllerRef = useRef<AbortController | null>(null);
   
@@ -63,6 +65,21 @@ export default function Dashboard() {
   const [activeMeetingData, setActiveMeetingData] = useState<ActiveMeetingData | null>(null);
 
   const endOfChatRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (token) {
+      // Prefetch profile info silently to keep UI fresh
+      getMe()
+        .then((data) => {
+          setUser(data);
+        })
+        .catch((err) => {
+          console.error("Failed to prefetch profile info", err);
+        });
+      // Fetch latest sessions silently
+      fetchSessions();
+    }
+  }, [token, setUser, fetchSessions]);
 
   useEffect(() => {
     endOfChatRef.current?.scrollIntoView({ behavior: "smooth" });
