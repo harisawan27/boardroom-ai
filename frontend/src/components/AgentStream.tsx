@@ -1,6 +1,7 @@
 /**
- * AgentStream — Displays a single agent's live streaming output
- * with a collapsible thinking dropdown and analysis content.
+ * AgentStream — Single agent card in the board canvas.
+ * Shows live-streaming text, a collapsible thinking dropdown,
+ * vote badge, confidence bar, and status indicator.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -14,182 +15,195 @@ interface AgentStreamProps {
   text: string;
   status: "idle" | "thinking" | "done" | "waiting";
   voteData?: { vote: string; confidence: number };
+  isModerator?: boolean;
 }
 
-export default function AgentStream({ role, thinking, text, status, voteData }: AgentStreamProps) {
+const VOTE_STYLES: Record<string, { pill: string; icon: string; label: string }> = {
+  YES:     { pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/30", icon: "✓", label: "YES" },
+  APPROVE: { pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/30", icon: "✓", label: "YES" },
+  NO:      { pill: "bg-red-500/10     text-red-600     dark:text-red-400     ring-red-500/30",     icon: "✗", label: "NO"  },
+  REJECT:  { pill: "bg-red-500/10     text-red-600     dark:text-red-400     ring-red-500/30",     icon: "✗", label: "NO"  },
+  DEFER:   { pill: "bg-amber-500/10   text-amber-600   dark:text-amber-400   ring-amber-500/30",   icon: "⏸", label: "DEFER" },
+};
+
+function voteStyle(vote?: string) {
+  if (!vote) return null;
+  return VOTE_STYLES[vote.toUpperCase()] ?? VOTE_STYLES.DEFER;
+}
+
+export default function AgentStream({
+  role, thinking, text, status, voteData, isModerator = false,
+}: AgentStreamProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isThinkingOpen, setIsThinkingOpen] = useState(false);
 
-  // Auto-scroll when new text arrives
   useEffect(() => {
     if (scrollRef.current && isExpanded) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [text, thinking, isExpanded]);
 
-  // Auto-open thinking while agent is still thinking
+  // Open thinking while generating, collapse when text arrives
   useEffect(() => {
-    if (status === "thinking" && thinking && !text) {
-      setIsThinkingOpen(true);
-    }
-    if (text) {
-      setIsThinkingOpen(false);
-    }
+    if (status === "thinking" && thinking && !text) setIsThinkingOpen(true);
+    if (text) setIsThinkingOpen(false);
   }, [status, thinking, text]);
 
   if (status === "idle") return null;
 
-  const isThinking = status === "thinking";
-  
-  // Strip any remaining <think>...</think> tags from display text (safety net)
+  const isActive = status === "thinking";
+  const isWaiting = status === "waiting";
+
+  // Clean display text — strip think tags and "Final Analysis:" prefix
   const displayText = text
     .replace(/<think>[\s\S]*?<\/think>/gi, "")
-    .replace(/^\s*Final Analysis:\s*/i, "")
-    .replace(/^\s*\*\*Final Analysis:\*\*\s*/i, "")
+    .replace(/^\s*\*?\*?Final Analysis:\*?\*?\s*/i, "")
     .trim();
 
-  // Extract vote and confidence from live text, fallback to passed report data
+  // Extract vote/confidence from text as live fallback
   const voteMatch = displayText.match(/VOTE:\s*(YES|NO|DEFER|APPROVE|REJECT)/i);
   const confMatch = displayText.match(/CONFIDENCE:\s*(\d+)/i);
-  
-  const currentVote = voteData?.vote || (voteMatch ? voteMatch[1].toUpperCase() : null);
-  const currentConf = voteData?.confidence ?? (confMatch ? parseInt(confMatch[1], 10) : null);
+  const currentVote = voteData?.vote ?? (voteMatch ? voteMatch[1] : undefined);
+  const currentConf = voteData?.confidence ?? (confMatch ? parseInt(confMatch[1], 10) : undefined);
+  const vs = voteStyle(currentVote);
 
   return (
-    <div className={`glass-elevated rounded-xl border animate-slide-up overflow-hidden transition-all duration-300 ${
-      isThinking 
-        ? "border-blue-500/30 ring-1 ring-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)] dark:shadow-[0_0_20px_rgba(59,130,246,0.15)]" 
-        : status === "waiting"
-        ? "border-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.05)] dark:shadow-[0_0_15px_rgba(251,191,36,0.08)]"
-        : "border-slate-200 dark:border-white/5"
-    }`}>
-      {/* Header (Click to toggle) */}
+    <div className={`
+      rounded-xl border overflow-hidden transition-all duration-300 bg-white dark:bg-[#0d1020]
+      ${isModerator ? "col-span-2 border-blue-200 dark:border-blue-500/20" : ""}
+      ${isActive
+        ? "border-blue-200 dark:border-blue-500/25 shadow-sm shadow-blue-500/10"
+        : isWaiting
+        ? "border-amber-200 dark:border-amber-500/20"
+        : "border-slate-200 dark:border-white/[0.06]"}
+    `}>
+      {/* ── Card header ── */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+        onClick={() => setIsExpanded(v => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors text-left"
       >
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-md bg-gradient-to-br ${role.color} flex items-center justify-center text-sm`}>
-            {role.icon}
-          </div>
-          <div className="text-left">
-            <span className="text-sm font-semibold text-slate-900 dark:text-white block">{role.name || role.key}</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-500">{role.title}</span>
-          </div>
+        {/* Avatar */}
+        <div className={`
+          w-8 h-8 rounded-lg bg-gradient-to-br ${role.color}
+          flex items-center justify-center text-sm flex-shrink-0 shadow-sm
+          ${isActive ? "ring-2 ring-blue-400/50 ring-offset-1 ring-offset-white dark:ring-offset-[#0d1020]" : ""}
+        `}>
+          {role.icon}
         </div>
 
-        <div className="flex items-center gap-4">
-          {currentVote && (
-            <div className="flex items-center gap-2 mr-2">
-              <span className={`text-[10px] px-2 py-0.5 rounded font-bold tracking-wider ${
-                currentVote === 'YES' || currentVote === 'APPROVE' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                currentVote === 'NO' || currentVote === 'REJECT' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
-                'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-              }`}>
-                {currentVote}
-              </span>
-              {currentConf !== null && (
-                <div className="flex items-center gap-1.5 opacity-80" title={`Confidence: ${currentConf}%`}>
-                  <div className="hidden sm:block w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        currentVote === 'YES' || currentVote === 'APPROVE' ? 'bg-emerald-500' :
-                        currentVote === 'NO' || currentVote === 'REJECT' ? 'bg-red-500' :
-                        'bg-amber-500'
-                      }`}
-                      style={{ width: `${currentConf}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-medium text-slate-500">{currentConf}%</span>
+        {/* Name + title */}
+        <div className="flex-1 min-w-0 text-left">
+          <p className="text-xs font-bold text-slate-900 dark:text-white truncate leading-tight">
+            {role.name || role.key}
+          </p>
+          <p className="text-[10px] text-slate-500 truncate">{role.title}</p>
+        </div>
+
+        {/* Vote badge */}
+        {vs && (
+          <span className={`hidden sm:flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded ring-1 flex-shrink-0 ${vs.pill}`}>
+            {vs.icon} {vs.label}
+            {currentConf !== undefined && <span className="font-normal opacity-70 ml-0.5">· {currentConf}%</span>}
+          </span>
+        )}
+
+        {/* Status chip */}
+        <span className="flex-shrink-0">
+          {isActive ? (
+            <span className="flex items-center gap-1.5 text-[10px] text-blue-500 font-medium">
+              <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              <span className="hidden sm:inline">Thinking</span>
+            </span>
+          ) : isWaiting ? (
+            <span className="flex items-center gap-1 text-[10px] text-amber-500 font-medium">
+              <svg className="w-3 h-3 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span className="hidden sm:inline">Waiting</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span className="hidden sm:inline">Done</span>
+            </span>
+          )}
+        </span>
+
+        {/* Expand chevron */}
+        <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 flex-shrink-0 ${isExpanded ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+
+      {/* ── Expandable body ── */}
+      {isExpanded && (
+        <div className="border-t border-slate-100 dark:border-white/[0.04] px-4 pb-4 pt-3">
+          
+          {/* Confidence mini-bar (mobile fallback for vote) */}
+          {vs && currentConf !== undefined && (
+            <div className="sm:hidden flex items-center gap-2 mb-3">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ring-1 ${vs.pill}`}>{vs.icon} {vs.label}</span>
+              <div className="flex-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-700 ${
+                  (currentVote || "").toUpperCase().includes("YES") || (currentVote || "").toUpperCase().includes("APPROVE")
+                    ? "bg-emerald-500"
+                    : (currentVote || "").toUpperCase().includes("NO") || (currentVote || "").toUpperCase().includes("REJECT")
+                    ? "bg-red-500" : "bg-amber-500"
+                }`} style={{ width: `${currentConf}%` }} />
+              </div>
+              <span className="text-[10px] text-slate-500">{currentConf}%</span>
+            </div>
+          )}
+
+          {/* Thinking dropdown */}
+          {thinking && (
+            <div className="mb-3">
+              <button
+                onClick={() => setIsThinkingOpen(v => !v)}
+                className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors group"
+              >
+                <svg className={`w-3 h-3 transition-transform ${isThinkingOpen ? "rotate-90" : ""}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                </svg>
+                <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                Thought process
+              </button>
+              {isThinkingOpen && (
+                <div className="mt-2 text-[11px] text-slate-500 dark:text-slate-500 italic leading-relaxed bg-slate-50 dark:bg-white/[0.02] rounded-lg p-3 border border-slate-200 dark:border-white/[0.04] max-h-40 overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                  {thinking}
                 </div>
               )}
             </div>
           )}
-          {status === "thinking" ? (
-            <span className="flex items-center gap-2 text-xs text-blue-400">
-              <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Thinking...
-            </span>
-          ) : status === "waiting" ? (
-            <span className="flex items-center gap-1.5 text-xs text-amber-500 dark:text-amber-400">
-              <svg className="w-3.5 h-3.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Waiting turn
-            </span>
-          ) : (
-            <span className="text-xs text-emerald-400 flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              Complete
-            </span>
-          )}
 
-          <svg
-            className={`w-4 h-4 text-slate-500 dark:text-slate-500 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </button>
-
-      {/* Content */}
-      <div
-        className={`transition-all duration-300 ease-in-out ${isExpanded ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"}`}
-      >
-        <div className="p-4 pt-0 border-t border-slate-200 dark:border-white/5">
-          {/* Thinking Dropdown */}
-          {thinking && (
-            <div className="mt-3 mb-2">
-              <button
-                onClick={() => setIsThinkingOpen(!isThinkingOpen)}
-                className="flex items-center gap-2 text-[11px] text-slate-500 hover:text-slate-400 transition-colors group"
-              >
-                <svg
-                  className={`w-3 h-3 transition-transform duration-200 ${isThinkingOpen ? "rotate-90" : ""}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  Thought process
-                </span>
-              </button>
-              <div
-                className={`overflow-hidden transition-all duration-300 ${isThinkingOpen ? "max-h-[200px] opacity-100 mt-2" : "max-h-0 opacity-0"}`}
-              >
-                <div className="text-[11px] text-slate-500 dark:text-slate-500 italic whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-white/[0.02] rounded-lg p-3 max-h-[180px] overflow-y-auto custom-scrollbar border border-slate-200 dark:border-white/[0.03]">
-                  {thinking}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Main Analysis Text */}
+          {/* Main analysis text */}
           <div
             ref={scrollRef}
-            className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed opacity-90 dark:opacity-80 max-h-[250px] overflow-y-auto custom-scrollbar mt-3 pr-2 prose prose-sm prose-slate dark:prose-invert max-w-none"
+            className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed max-h-56 overflow-y-auto custom-scrollbar pr-1 prose prose-xs prose-slate dark:prose-invert max-w-none"
           >
             {displayText ? (
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+            ) : thinking ? (
+              <span className="text-slate-400 italic text-[11px]">Thinking…</span>
             ) : (
-              thinking ? "" : "Initializing analysis..."
+              <span className="text-slate-400 italic text-[11px]">Initializing…</span>
             )}
-            {isThinking && (
-              <span className="inline-block animate-pulse font-bold text-blue-500 ml-0.5 relative -top-[1px]">|</span>
+            {isActive && (
+              <span className="inline-block animate-pulse font-bold text-blue-500 ml-0.5">|</span>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
