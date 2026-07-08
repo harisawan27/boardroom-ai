@@ -102,7 +102,7 @@ The system uses Google ADK's orchestration primitives:
 | Layer | Technology |
 |-------|-----------|
 | **AI Framework** | Google ADK (Agent Development Kit) |
-| **LLM** | Google Gemini 2.0 Flash |
+| **LLM** | Google Gemini 3.1 Flash Lite & Gemma-4-31b-it |
 | **Backend** | Python, FastAPI, Uvicorn |
 | **Frontend** | React, TypeScript, Tailwind CSS v4, Vite |
 | **MCP Integration** | FastMCP server with web search tool |
